@@ -42,6 +42,7 @@ collectors/
   windows/           Start-AslSession.ps1  (Apollo host or Windows Moonlight/Artemis)
   linux/             asl-session.sh        (Linux Moonlight)
   android/           agent-less capture guide (paste log + manual link entry)
+  xbox/              agent-less capture guide for Xbox (Moonlight)
 network/             iperf3 runner/parser + scenario presets
 deploy/              Tailscale serve config, ACL snippet, deploy runbook
 docs/                log paths, scenario matrix, troubleshooting
@@ -79,8 +80,8 @@ See the **[host & client setup guide](./docs/host-client-setup.md)** for local v
    collectors/linux/asl-session.sh --hub-url HUB \
        --session-id <id> --source client --role moonlight --interval 15 --log <moonlight-log>
    ```
-   Android (Artemis): use the hub's **Manual entry** panel — see
-   [collectors/android/README.md](./collectors/android/README.md).
+   Android (Artemis) / Xbox (Moonlight): agent-less — use the hub's **Manual entry** panel; see
+   [collectors/android/README.md](./collectors/android/README.md) / [collectors/xbox/README.md](./collectors/xbox/README.md).
 3. Optional network test:
    ```bash
    # host: iperf3 -s   |   client:

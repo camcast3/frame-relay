@@ -69,6 +69,10 @@ collectors\windows\Start-AslSession.ps1 -HubUrl HUB -SessionId <id> -Source clie
 **Client — Android Artemis:** use the session page's **Manual entry** panel (paste the exported
 log + enter Wi-Fi/AP details). See [../collectors/android/README.md](../collectors/android/README.md).
 
+**Client — Xbox (Moonlight):** agent-less (no Python on Xbox) → use the **Manual entry** panel
+(role `moonlight`); the host collector still auto-detects the Xbox's IP + network path. See
+[../collectors/xbox/README.md](../collectors/xbox/README.md).
+
 Stream for a few minutes, then press **Enter** in each collector window. Add `-StopSession` /
 `--stop-session` if you want the session auto-marked stopped.
 
