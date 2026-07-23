@@ -47,7 +47,7 @@ def _enrich_host(hub: str, sid: str, log_text: str, client_ip: Optional[str],
     the CLI or already set on the session (e.g. entered in the UI).
     """
     derived = hostmeta.parse_apollo_metadata(log_text) if log_text.strip() else {}
-    net_path = conninfo.classify_network_path(client_ip) if client_ip else None
+    net_path = conninfo.classify_network_path(client_ip, args.wg_subnet) if client_ip else None
     current = client.get_session(hub, sid) or {}
     patch: dict[str, object] = {}
     for field in ("codec", "resolution", "fps", "bitrate_mbps"):
@@ -64,10 +64,15 @@ def _enrich_host(hub: str, sid: str, log_text: str, client_ip: Optional[str],
         print(f"auto-filled: {patch}")
 
 
+DEFAULT_WG_SUBNETS = ["192.168.2.0/24"]  # user's WireGuard VLAN (override with --wg-subnet)
+
+
 def run(args: argparse.Namespace) -> str:
     hub = args.hub_url.rstrip("/")
     machine = args.machine or platform.node()
     role = args.role or ("apollo" if args.source == "host" else "moonlight")
+    if not args.wg_subnet:
+        args.wg_subnet = list(DEFAULT_WG_SUBNETS)
 
     sid = args.session_id
     if not sid:
@@ -112,7 +117,7 @@ def run(args: argparse.Namespace) -> str:
     samples = monitor.stop() if monitor else []
     client_ip = conn_monitor.stop() if conn_monitor else None
     if client_ip:
-        print(f"detected client {client_ip} -> {conninfo.classify_network_path(client_ip)}")
+        print(f"detected client {client_ip} -> {conninfo.classify_network_path(client_ip, args.wg_subnet)}")
 
     host_log_text = ""
     for path in logs:
@@ -156,11 +161,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--stop-session", action="store_true", help="mark the session stopped on the hub")
     p.add_argument("--apollo-port", type=int, default=47989,
                    help="Apollo base port for client detection (default 47989)")
+    p.add_argument("--wg-subnet", action="append", default=[], dest="wg_subnet",
+                   help="WireGuard client subnet (repeatable); a client in it is classified "
+                        "remote-WireGuard instead of local-LAN (default: 192.168.2.0/24)")
     # metadata used only with --create
     p.add_argument("--name")
     p.add_argument("--host")
     p.add_argument("--client")
-    p.add_argument("--network-path", choices=["local-LAN", "remote-Tailscale", "remote-WAN"])
+    p.add_argument("--network-path", choices=["local-LAN", "remote-WireGuard", "remote-Tailscale", "remote-WAN"])
     p.add_argument("--codec")
     p.add_argument("--resolution")
     p.add_argument("--fps", type=int)

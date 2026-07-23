@@ -5,7 +5,7 @@ from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
-NetworkPath = Literal["local-LAN", "remote-Tailscale", "remote-WAN"]
+NetworkPath = Literal["local-LAN", "remote-WireGuard", "remote-Tailscale", "remote-WAN"]
 Outcome = Literal["unknown", "pass", "fail", "partial"]
 Source = Literal["host", "client"]
 Role = Literal["apollo", "moonlight", "artemis"]

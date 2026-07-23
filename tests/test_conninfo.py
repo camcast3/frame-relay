@@ -30,6 +30,15 @@ def test_classify_network_path():
     assert conninfo.classify_network_path("not-an-ip") is None
 
 
+def test_classify_wireguard_subnet():
+    # A client in the configured WG subnet is remote-WireGuard, not local-LAN.
+    assert conninfo.classify_network_path("192.168.2.7", ["192.168.2.0/24"]) == "remote-WireGuard"
+    # A LAN client not in the WG subnet still classifies as local-LAN.
+    assert conninfo.classify_network_path("192.168.69.50", ["192.168.2.0/24"]) == "local-LAN"
+    # An invalid subnet is ignored, not fatal.
+    assert conninfo.classify_network_path("192.168.2.7", ["bogus"]) == "local-LAN"
+
+
 def test_parse_conns_windows_lan():
     ports = conninfo.apollo_ports(47989)
     clients = conninfo.parse_conns(WIN_NETSTAT, ports)
@@ -46,3 +55,8 @@ def test_parse_conns_ss_tailscale():
 
 def test_parse_conns_no_apollo_ports():
     assert conninfo.parse_conns("TCP 1.2.3.4:80 5.6.7.8:1234 ESTABLISHED", [47989]) == []
+
+
+def test_default_wg_subnet_is_the_wireguard_vlan():
+    from asl_collector.session import DEFAULT_WG_SUBNETS
+    assert conninfo.classify_network_path("192.168.2.50", DEFAULT_WG_SUBNETS) == "remote-WireGuard"

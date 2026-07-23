@@ -1,5 +1,11 @@
 # Apollo Streaming Lab deploy
 
+> Two deployment options:
+> - **LAN / WireGuard** (recommended for the WireGuard + LAN model): use
+>   `docker compose -f docker-compose.lan.yaml up -d --build` — see
+>   [../docs/host-client-setup.md](../docs/host-client-setup.md).
+> - **Tailnet-only** (this file): Tailscale sidecar, no LAN ports.
+
 1. Copy `.env.example` to `.env`.
 2. Set `TS_AUTHKEY` from the Tailscale admin console; prefer an auth key tagged `tag:apollo-hub`.
 3. Optionally set `ASL_COPILOT_TOKEN` and `ASL_COPILOT_BACKEND=cli` or `sdk`.

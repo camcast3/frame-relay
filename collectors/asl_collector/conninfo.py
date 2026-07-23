@@ -30,13 +30,20 @@ def apollo_ports(base: int = 47989) -> list[int]:
     return [base - 5, base, base + 21]
 
 
-def classify_network_path(ip: str) -> Optional[str]:
+def classify_network_path(ip: str, wg_subnets: Optional[Iterable[str]] = None) -> Optional[str]:
     try:
         addr = ipaddress.ip_address(ip)
     except ValueError:
         return None
     if addr.is_loopback or addr.is_link_local or addr.is_unspecified or addr.is_multicast:
         return None
+    # A client whose IP falls in a WireGuard subnet is remote-over-WireGuard, not LAN.
+    for net in wg_subnets or []:
+        try:
+            if addr in ipaddress.ip_network(net, strict=False):
+                return "remote-WireGuard"
+        except ValueError:
+            continue
     if addr in _TAILSCALE_CGNAT:
         return "remote-Tailscale"
     if addr.is_private:

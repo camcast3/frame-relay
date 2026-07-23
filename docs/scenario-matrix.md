@@ -8,8 +8,8 @@ Create one hub session per row; the presets live in `network/scenarios.py`.
 | 1 | local-LAN         | Ethernet         | HEVC  | 1440p/60  | 80      | off |          |        |            |
 | 2 | local-LAN         | Wi-Fi 5GHz       | HEVC  | 1440p/60  | 50      | off |          |        |            |
 | 3 | local-LAN         | Wi-Fi 6E/6GHz    | AV1   | 4K/60     | 100     | on  |          |        |            |
-| 4 | remote-Tailscale  | Ethernet         | HEVC  | 1080p/60  | 35      | off |          |        |            |
-| 5 | remote-Tailscale  | Wi-Fi            | HEVC  | 1080p/60  | 25      | off |          |        |            |
+| 4 | remote-WireGuard  | Ethernet         | HEVC  | 1080p/60  | 35      | off |          |        |            |
+| 5 | remote-WireGuard  | Wi-Fi            | HEVC  | 1080p/60  | 25      | off |          |        |            |
 | 6 | remote-WAN        | any              | HEVC  | 1080p/60  | 25      | off |          |        |            |
 
 For each row:
@@ -22,5 +22,6 @@ For each row:
 
 ## What each path stresses
 - **local-LAN:** encoder/decoder latency, Wi-Fi quality, NIC-speed mismatch (buffer overrun).
+- **remote-WireGuard:** tunnel MTU (try host MTU ~1420), UniFi uplink saturation, WAN jitter/loss.
 - **remote-Tailscale:** DERP relay vs direct, MTU, WAN jitter/loss, encryption overhead.
 - **remote-WAN:** uplink saturation, bufferbloat, NAT/firewall — use MIST for NAT diagnosis.

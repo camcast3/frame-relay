@@ -30,7 +30,8 @@ param(
   [string]$Name,
   [string]$HostName,
   [string]$Client,
-  [ValidateSet('local-LAN', 'remote-Tailscale', 'remote-WAN')][string]$NetworkPath,
+  [ValidateSet('local-LAN', 'remote-WireGuard', 'remote-Tailscale', 'remote-WAN')][string]$NetworkPath,
+  [string[]]$WgSubnet,
   [string]$Codec,
   [string]$Resolution,
   [int]$Fps,
@@ -72,6 +73,7 @@ if ($Name)        { $asl += @('--name', $Name) }
 if ($HostName)    { $asl += @('--host', $HostName) }
 if ($Client)      { $asl += @('--client', $Client) }
 if ($NetworkPath) { $asl += @('--network-path', $NetworkPath) }
+foreach ($sn in $WgSubnet) { $asl += @('--wg-subnet', $sn) }
 if ($Codec)       { $asl += @('--codec', $Codec) }
 if ($Resolution)  { $asl += @('--resolution', $Resolution) }
 if ($Fps)         { $asl += @('--fps', $Fps) }

@@ -1,0 +1,23 @@
+# LAN / WireGuard-reachable hub (no Tailscale).
+#
+# Local devices reach the hub at http://<watchtower-ip>:8080; remote devices reach the same
+# address over their WireGuard tunnel (UniFi routes the WG VLAN 192.168.2.0/24 to it).
+# Control who can reach it with your own firewall rules.
+#
+# Deploy:  docker compose -f docker-compose.lan.yaml up -d --build
+services:
+  hub:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ASL_DATA_DIR: /data
+      ASL_COPILOT_BACKEND: ${ASL_COPILOT_BACKEND:-mock}
+      ASL_COPILOT_TOKEN: ${ASL_COPILOT_TOKEN:-}
+      ASL_COPILOT_MODEL: ${ASL_COPILOT_MODEL:-auto}
+    volumes:
+      - hub-data:/data
+
+volumes:
+  hub-data:

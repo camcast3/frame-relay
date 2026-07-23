@@ -57,23 +57,26 @@ python -m venv .venv
 # open http://127.0.0.1:8080
 ```
 
-## Deploy on watchtower (tailnet-only)
-See [deploy/README.md](./deploy/README.md). In short: set `TS_AUTHKEY` (and optionally
-`ASL_COPILOT_TOKEN`) in `.env`, then `docker compose up -d --build`, and apply
-[deploy/tailscale-acl.snippet.hujson](./deploy/tailscale-acl.snippet.hujson) in the Tailscale
-admin console. The hub is then at `https://apollo-streaming-lab.<tailnet>.ts.net`.
+## Deploy the hub
+Two options — see the **[host & client setup guide](./docs/host-client-setup.md)** for the full walkthrough:
+- **LAN / WireGuard (recommended for this setup):** `docker compose -f docker-compose.lan.yaml up -d --build`.
+  Reachable at `http://<watchtower-ip>:8080` — local devices hit the LAN IP, remote devices reach
+  it over their UniFi **WireGuard** tunnel. Control access with your firewall.
+- **Tailnet-only (optional):** `docker compose up -d --build` (Tailscale sidecar); reachable at
+  `https://apollo-streaming-lab.<tailnet>.ts.net`. Set `TS_AUTHKEY` in `.env` and apply
+  [deploy/tailscale-acl.snippet.hujson](./deploy/tailscale-acl.snippet.hujson). See [deploy/README.md](./deploy/README.md).
 
 ## Capture a session
+See the **[host & client setup guide](./docs/host-client-setup.md)** for local vs remote (WireGuard) details.
 1. Create a session in the UI (**+ New session**) — or let a collector create it with `--create`.
-2. On the **host** and each **client**, run the collector and attach to the session id:
+2. On the **host** and each **client**, run the collector and attach to the session id (`HUB` = your hub URL):
    ```powershell
    # Windows Apollo host
-   collectors\windows\Start-AslSession.ps1 -HubUrl https://apollo-streaming-lab.<tailnet>.ts.net `
-       -SessionId <id> -Source host
+   collectors\windows\Start-AslSession.ps1 -HubUrl HUB -SessionId <id> -Source host
    ```
    ```bash
    # Linux Moonlight client
-   collectors/linux/asl-session.sh --hub-url https://apollo-streaming-lab.<tailnet>.ts.net \
+   collectors/linux/asl-session.sh --hub-url HUB \
        --session-id <id> --source client --role moonlight --interval 15 --log <moonlight-log>
    ```
    Android (Artemis): use the hub's **Manual entry** panel — see
@@ -81,7 +84,7 @@ admin console. The hub is then at `https://apollo-streaming-lab.<tailnet>.ts.net
 3. Optional network test:
    ```bash
    # host: iperf3 -s   |   client:
-   python network/iperf_runner.py --host <host-ip> --hub-url <hub> --session-id <id>
+   python network/iperf_runner.py --host <host-ip> --hub-url HUB --session-id <id>
    ```
 4. Stop the collectors, add **notes**, set the **outcome**, then click **Analyze**.
 
@@ -90,7 +93,8 @@ When run with `--source host`, on stop the collector **fills blank session field
 overriding values you set in the UI/CLI):
 - from the Apollo log — **codec, resolution, fps, bitrate, HDR**;
 - from the live connection to Apollo's ports — the **client** IP and the **network path**
-  (`100.64.0.0/10` → `remote-Tailscale`, private → `local-LAN`, public → `remote-WAN`);
+  (`192.168.2.0/24` WireGuard VLAN → `remote-WireGuard`, `100.64.0.0/10` → `remote-Tailscale`,
+  other private → `local-LAN`, public → `remote-WAN`);
 - `host`/`client` also default to the capturing machine's hostname.
 
 So a bare `--create --source host` still ends up populated after a stream.

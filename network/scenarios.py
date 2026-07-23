@@ -31,6 +31,18 @@ SCENARIOS: dict[str, dict[str, Any]] = {
         },
         "what_to_watch_for": "DERP relay fallback, MTU issues, loss above 5%, or jitter above 1 ms.",
     },
+    "remote-WireGuard": {
+        "codec": "HEVC",
+        "resolution_fps_guidance": "Start at 1080p/60; WireGuard adds ~60-80 byte overhead so watch for MTU-driven loss.",
+        "starting_bitrate_mbps": 35,
+        "iperf_bitrate": "50M",
+        "encoder_knobs": {
+            "fec_percentage": 15,
+            "lan_encryption_mode": "auto",
+            "wan_encryption_mode": "enabled",
+        },
+        "what_to_watch_for": "Tunnel MTU (try host MTU ~1420), UniFi uplink saturation, loss above 5%, jitter above 1 ms.",
+    },
     "remote-WAN": {
         "codec": "HEVC",
         "resolution_fps_guidance": "Start at 1080p/60 or 720p/60 on constrained uplinks.",

@@ -56,6 +56,6 @@ def test_parse_iperf3_missing_keys_does_not_crash():
 def test_scenarios_include_hub_network_paths():
     names = set(list_scenarios())
 
-    assert names == {"local-LAN", "remote-Tailscale", "remote-WAN"}
+    assert names == {"local-LAN", "remote-WireGuard", "remote-Tailscale", "remote-WAN"}
     for name in names:
         assert get_scenario(name)
