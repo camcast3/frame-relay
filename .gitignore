@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Local data / secrets
+data/
+*.db
+*.sqlite
+.env
+tailscale-state/
+artifacts/
+
+# Editor
+.vscode/
+.idea/

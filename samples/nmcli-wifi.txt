@@ -1,0 +1,2 @@
+yes:NegativeZone:AA\:BB\:CC\:11\:22\:44:149:5745 MHz:1201 Mbit/s:82
+no:Neighbor5G:DD\:EE\:FF\:00\:11\:22:36:5180 MHz:866 Mbit/s:45

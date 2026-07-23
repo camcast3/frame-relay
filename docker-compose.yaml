@@ -1,0 +1,36 @@
+services:
+  tailscale:
+    image: tailscale/tailscale:latest
+    hostname: apollo-streaming-lab
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:?set in .env}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_USERSPACE: "false"
+      TS_SERVE_CONFIG: /config/serve.json
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+      - ./deploy/serve.json:/config/serve.json:ro
+
+  hub:
+    build: .
+    network_mode: service:tailscale
+    depends_on:
+      - tailscale
+    restart: unless-stopped
+    environment:
+      ASL_DATA_DIR: /data
+      ASL_COPILOT_BACKEND: ${ASL_COPILOT_BACKEND:-mock}
+      ASL_COPILOT_TOKEN: ${ASL_COPILOT_TOKEN:-}
+      ASL_COPILOT_MODEL: ${ASL_COPILOT_MODEL:-auto}
+    volumes:
+      - hub-data:/data
+
+volumes:
+  tailscale-state:
+  hub-data:

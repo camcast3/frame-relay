@@ -1,0 +1,11 @@
+Connected to aa:bb:cc:11:22:44 (on wlan0)
+	SSID: NegativeZone
+	freq: 5745
+	RX: 123456 bytes (100 packets)
+	TX: 65432 bytes (80 packets)
+	signal: -58 dBm
+	rx bitrate: 1201.0 MBit/s
+	tx bitrate: 1080.0 MBit/s
+	bss flags:	short-slot-time
+	dtim period:	1
+	beacon int:	100

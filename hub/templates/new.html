@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}New session · Apollo Streaming Lab{% endblock %}
+{% block content %}
+<h1>New test session</h1>
+<form id="new-session" class="card form">
+  <label>Name <input name="name" placeholder="e.g. Couch box, remote, HEVC 1440p60"></label>
+  <div class="row">
+    <label>Host <input name="host" placeholder="DOMINO"></label>
+    <label>Client <input name="client" placeholder="bazzite-couch"></label>
+  </div>
+  <div class="row">
+    <label>Network path
+      <select name="network_path">
+        <option value="">—</option>
+        <option value="local-LAN">local-LAN</option>
+        <option value="remote-Tailscale">remote-Tailscale</option>
+        <option value="remote-WAN">remote-WAN</option>
+      </select>
+    </label>
+    <label>Codec
+      <select name="codec">
+        <option value="">—</option>
+        <option>H.264</option><option>HEVC</option><option>AV1</option>
+      </select>
+    </label>
+  </div>
+  <div class="row">
+    <label>Resolution <input name="resolution" placeholder="1440p"></label>
+    <label>FPS <input name="fps" type="number" placeholder="60"></label>
+    <label>Bitrate (Mbps) <input name="bitrate_mbps" type="number" placeholder="50"></label>
+    <label class="check">HDR <input name="hdr" type="checkbox"></label>
+  </div>
+  <label>Notes <textarea name="notes" rows="3" placeholder="What are you testing / expecting?"></textarea></label>
+  <button class="btn primary" type="submit">Create session</button>
+</form>
+{% endblock %}
+{% block scripts %}<script>ASL.wireNewSessionForm();</script>{% endblock %}

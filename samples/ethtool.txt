@@ -1,0 +1,9 @@
+Settings for eth0:
+	Supported ports: [ TP ]
+	Supported link modes:   10baseT/Half 10baseT/Full
+	                        100baseT/Full 1000baseT/Full 2500baseT/Full
+	Speed: 2500Mb/s
+	Duplex: Full
+	Auto-negotiation: on
+	Port: Twisted Pair
+	Link detected: yes

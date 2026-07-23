@@ -1,0 +1,10 @@
+[2026-07-22 21:34:23.272]: Info: Requested frame rate [60fps]
+[2026-07-22 21:34:23.272]: Info: Client dynamicRange: 0, Display is HDR: false
+[2026-07-22 21:34:23.272]: Info: Creating encoder [h264_amf]
+[2026-07-22 21:34:23.274]: Error: Failed to create encoder D3D11 device [0x887A0004]
+[2026-07-22 21:34:23.274]: Info: Encoder [amdvce] failed
+[2026-07-22 21:34:23.280]: Info: Desktop resolution [2560x1600]
+[2026-07-22 21:34:23.365]: Info: Found H.264 encoder: libx264 [software]
+[2026-07-22 21:34:23.533]: Info: Host Streaming bitrate is [44000kbps]
+[2026-07-22 21:34:23.564]: Info: CLIENT CONNECTED
+[2026-07-22 21:36:53.481]: Info: CLIENT DISCONNECTED

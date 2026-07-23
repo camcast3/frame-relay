@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Test sessions</h1>
+{% if not sessions %}
+  <p class="muted">No sessions yet. <a href="/sessions/new">Start one</a> to begin capturing.</p>
+{% else %}
+<table class="grid">
+  <thead>
+    <tr><th>Session</th><th>Status</th><th>Outcome</th><th>Path</th><th>Host → Client</th>
+        <th>Codec</th><th>Created (UTC)</th></tr>
+  </thead>
+  <tbody>
+  {% for s in sessions %}
+    <tr onclick="location='/sessions/{{ s.id }}'">
+      <td><a href="/sessions/{{ s.id }}">{{ s.name or s.id }}</a><br><span class="muted mono">{{ s.id }}</span></td>
+      <td><span class="pill status-{{ s.status }}">{{ s.status }}</span></td>
+      <td><span class="pill outcome-{{ s.outcome }}">{{ s.outcome }}</span></td>
+      <td>{{ s.network_path or "—" }}</td>
+      <td>{{ s.host or "?" }} → {{ s.client or "?" }}</td>
+      <td>{{ s.codec or "—" }}{% if s.hdr %} · HDR{% endif %}</td>
+      <td class="mono">{{ s.created_at[:19] }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

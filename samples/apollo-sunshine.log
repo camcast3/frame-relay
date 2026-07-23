@@ -1,0 +1,7 @@
+[2026-07-23 09:59:58]: Info: Sunshine version: 0.23.1
+[2026-07-23 10:00:01]: Info: CLIENT CONNECTED
+[2026-07-23 10:00:01]: Info: Applications for [couch]
+[2026-07-23 10:00:02]: Info: Encoder: nvenc h265 (HEVC)
+[2026-07-23 10:00:05]: Warning: Couldn't create autonomous virtual display
+[2026-07-23 10:00:12]: Error: Failed to enqueue packet: encoder busy
+[2026-07-23 10:00:40]: Info: CLIENT DISCONNECTED
