@@ -54,9 +54,14 @@ Dockerfile docker-compose.yaml .env.example
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m uvicorn hub.main:app --reload --port 8080
-# open http://127.0.0.1:8080
+# Reachable only from this machine (localhost):
+.\.venv\Scripts\python.exe -m uvicorn hub.main:app --reload --port 8080   # http://127.0.0.1:8080
+# Reachable from other devices on the LAN (binds 0.0.0.0:8080 via config):
+.\.venv\Scripts\python.exe -m hub                                          # http://<this-host-ip>:8080
 ```
+> A bare `uvicorn hub.main:app` binds to **127.0.0.1 only** — use `python -m hub` (or add
+> `--host 0.0.0.0`) to reach it from other devices, and allow the port in your host firewall.
+> For always-on use, deploy on watchtower instead (see below).
 
 ## Deploy the hub
 Two options — see the **[host & client setup guide](./docs/host-client-setup.md)** for the full walkthrough:
