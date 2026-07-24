@@ -12,9 +12,21 @@ every machine runs **NTP** — the hub correlates host and client logs by timest
   or the config file. Lines are timestamped and include client connect/pair/disconnect events.
 - The `Start-AslSession.ps1` launcher auto-discovers these paths for `-Source host`.
 
-## Moonlight-Qt client (Windows)
-- Use the app's **Copy diagnostic logs** action, or check `%TEMP%\Moonlight\`.
-- Pass the file with `-LogPath` to `Start-AslSession.ps1`.
+## Moonlight-based clients (Windows) — Artemis & Moonlight-Qt
+Both are Qt apps that write a **per-run** diagnostic log into `%TEMP%`:
+- **Artemis** (Apollo's Moonlight fork — "Artemis Desktop Project"): `%TEMP%\Artemis-<n>.log`.
+  Grab the newest run and pass it to the collector:
+  ```powershell
+  $log = (Get-ChildItem "$env:TEMP\Artemis-*.log" |
+          Sort-Object LastWriteTime -Desc | Select-Object -First 1).FullName
+  # ... -Source client -Role artemis -LogPath $log
+  ```
+- **Moonlight-Qt:** use the app's **Copy diagnostic logs** action and save the file, then pass it
+  with `-LogPath` (`-Role moonlight`).
+  > Heads-up: `%TEMP%\Moonlight_Game_Streaming_Client_*.log` is the **installer** (WiX/Burn) log,
+  > *not* a stream log — don't attach it.
+- `-LogPath` accepts globs, but the collector posts **every** match, so prefer selecting the single
+  newest file as shown above.
 
 ## Moonlight-Qt client (Linux — Bazzite couch box)
 - **Flatpak:** `~/.var/app/com.moonlight_stream.Moonlight/` (and `flatpak run … 2> moonlight.log`).

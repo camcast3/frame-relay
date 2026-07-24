@@ -30,6 +30,13 @@ def create_session(hub: str, payload: dict[str, Any]) -> str:
     return res["id"]
 
 
+def list_sessions(hub: str, awaiting_client: bool = False) -> list[dict[str, Any]]:
+    url = f"{hub}/api/sessions"
+    if awaiting_client:
+        url += "?awaiting_client=true"
+    return _request("GET", url) or []
+
+
 def get_session(hub: str, sid: str) -> Optional[dict[str, Any]]:
     res = _request("GET", f"{hub}/api/sessions/{sid}")
     return res.get("session") if res else None

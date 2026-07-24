@@ -46,9 +46,14 @@ def create_session(data: SessionCreate) -> dict[str, Any]:
     return get_session(sid)  # type: ignore[return-value]
 
 
-def list_sessions() -> list[dict[str, Any]]:
+def list_sessions(awaiting_client: bool = False) -> list[dict[str, Any]]:
+    q = "SELECT * FROM sessions"
+    if awaiting_client:
+        # No client attached yet: the client metadata field is empty/null.
+        q += " WHERE client IS NULL OR TRIM(client) = ''"
+    q += " ORDER BY created_at DESC"
     with db.db() as conn:
-        rows = conn.execute("SELECT * FROM sessions ORDER BY created_at DESC").fetchall()
+        rows = conn.execute(q).fetchall()
     return db.rows_to_dicts(rows)
 
 

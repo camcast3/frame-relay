@@ -67,6 +67,35 @@ def _enrich_host(hub: str, sid: str, log_text: str, client_ip: Optional[str],
 DEFAULT_WG_SUBNETS = ["192.168.2.0/24"]  # user's WireGuard VLAN (override with --wg-subnet)
 
 
+def _select_session(hub: str) -> str:
+    """Interactively pick a session that has no client attached yet.
+
+    Saves the operator from copy-pasting a session id: the host creates the session,
+    the client just chooses it from the hub's awaiting-client list.
+    """
+    sessions = client.list_sessions(hub, awaiting_client=True)
+    if not sessions:
+        raise SystemExit(
+            "no sessions awaiting a client on the hub; create one first "
+            "(or pass --session-id / --create)"
+        )
+    print("Sessions awaiting a client:")
+    for i, s in enumerate(sessions, 1):
+        name = s.get("name") or "(unnamed)"
+        host = s.get("host") or "?"
+        created = (s.get("created_at") or "")[:19]
+        print(f"  [{i}] {name}  host={host}  {created}  ({s['id']})")
+    if not sys.stdin.isatty():
+        raise SystemExit("not a TTY; pass --session-id to select non-interactively")
+    while True:
+        choice = input(f"Select 1-{len(sessions)} (q to quit): ").strip().lower()
+        if choice in ("q", ""):
+            raise SystemExit("no session selected")
+        if choice.isdigit() and 1 <= int(choice) <= len(sessions):
+            return sessions[int(choice) - 1]["id"]
+        print("invalid selection")
+
+
 def run(args: argparse.Namespace) -> str:
     hub = args.hub_url.rstrip("/")
     machine = args.machine or platform.node()
@@ -77,17 +106,18 @@ def run(args: argparse.Namespace) -> str:
     sid = args.session_id
     if not sid:
         if not args.create:
-            raise SystemExit("provide --session-id or --create")
-        # Default host/client to this machine's name based on which side we're capturing.
-        default_host = args.host or (machine if args.source == "host" else None)
-        default_client = args.client or (machine if args.source == "client" else None)
-        sid = client.create_session(hub, {
-            "name": args.name, "host": default_host, "client": default_client,
-            "network_path": args.network_path, "codec": args.codec,
-            "resolution": args.resolution, "fps": args.fps,
-            "bitrate_mbps": args.bitrate_mbps, "hdr": args.hdr,
-        })
-        print(f"created session {sid}")
+            sid = _select_session(hub)
+        else:
+            # Default host/client to this machine's name based on which side we're capturing.
+            default_host = args.host or (machine if args.source == "host" else None)
+            default_client = args.client or (machine if args.source == "client" else None)
+            sid = client.create_session(hub, {
+                "name": args.name, "host": default_host, "client": default_client,
+                "network_path": args.network_path, "codec": args.codec,
+                "resolution": args.resolution, "fps": args.fps,
+                "bitrate_mbps": args.bitrate_mbps, "hdr": args.hdr,
+            })
+            print(f"created session {sid}")
 
     logs = _expand(args.log)
     start = _now()
@@ -150,7 +180,8 @@ def run(args: argparse.Namespace) -> str:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="asl_collector", description="Apollo Streaming Lab collector")
     p.add_argument("--hub-url", required=True, help="e.g. https://apollo-streaming-lab.<tailnet>.ts.net")
-    p.add_argument("--session-id", help="existing session id; omit with --create")
+    p.add_argument("--session-id", help="existing session id; omit to pick from the hub "
+                                         "interactively, or use --create for a new one")
     p.add_argument("--create", action="store_true", help="create a new session")
     p.add_argument("--source", choices=["host", "client"], default="client")
     p.add_argument("--role", choices=["apollo", "moonlight", "artemis"])

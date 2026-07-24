@@ -9,10 +9,16 @@
       -SessionId 20260723T101951-ab12 -Source host
 
 .EXAMPLE
-  # Windows Moonlight client, create the session on the fly
+  # Windows Artemis client, create the session on the fly (newest Artemis log)
+  $log = (Get-ChildItem "$env:TEMP\Artemis-*.log" |
+          Sort-Object LastWriteTime -Desc | Select-Object -First 1).FullName
   .\Start-AslSession.ps1 -HubUrl https://apollo-streaming-lab.<tailnet>.ts.net -Create `
-      -Name "Windows Moonlight LAN" -Host DOMINO -Client laptop -NetworkPath local-LAN `
-      -Source client -Role moonlight -LogPath "$env:TEMP\Moonlight\Moonlight.log"
+      -Name "Windows Artemis LAN" -Host DOMINO -Client laptop -NetworkPath local-LAN `
+      -Source client -Role artemis -LogPath $log
+
+.EXAMPLE
+  # Windows Artemis client, minimal: auto-detect newest Artemis log + pick a session from the hub
+  .\Start-AslSession.ps1 -HubUrl http://192.168.69.159:8080 -Source client -Role artemis
 #>
 [CmdletBinding()]
 param(
@@ -59,6 +65,14 @@ if (-not $LogPath -and $Source -eq 'host') {
   $found = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
   if ($found) { $LogPath = @($found); Write-Host "Using Apollo log: $found" }
   else { Write-Warning "No Apollo log auto-detected; pass -LogPath explicitly." }
+}
+
+# Auto-discover the newest Artemis log on a client if none was given.
+if (-not $LogPath -and $Source -eq 'client' -and $Role -ne 'moonlight') {
+  $artemis = Get-ChildItem "$env:TEMP\Artemis-*.log" -ErrorAction SilentlyContinue |
+             Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  if ($artemis) { $LogPath = @($artemis.FullName); Write-Host "Using Artemis log: $($artemis.FullName)" }
+  else { Write-Warning "No Artemis log auto-detected in `$env:TEMP; pass -LogPath explicitly." }
 }
 
 $asl = @('-m', 'asl_collector', '--hub-url', $HubUrl, '--source', $Source,

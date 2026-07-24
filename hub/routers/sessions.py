@@ -15,8 +15,10 @@ def create(data: SessionCreate):
 
 
 @router.get("")
-def list_all():
-    return service.list_sessions()
+def list_all(awaiting_client: bool = False):
+    """List sessions. Pass ?awaiting_client=true to return only sessions whose
+    client metadata field is still empty/null (host-created, no client attached)."""
+    return service.list_sessions(awaiting_client=awaiting_client)
 
 
 @router.get("/{session_id}")

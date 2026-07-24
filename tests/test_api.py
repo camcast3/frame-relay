@@ -83,6 +83,20 @@ def test_patch_metadata(client):
     assert got["hdr"] == 1
 
 
+def test_awaiting_client_filter(client):
+    with_client = _create(client, name="joined")
+    r = client.post("/api/sessions", json={"name": "open", "host": "DOMINO", "client": None})
+    no_client = r.json()
+
+    all_ids = {s["id"] for s in client.get("/api/sessions").json()}
+    assert with_client["id"] in all_ids and no_client["id"] in all_ids
+
+    awaiting = client.get("/api/sessions", params={"awaiting_client": "true"}).json()
+    awaiting_ids = {s["id"] for s in awaiting}
+    assert no_client["id"] in awaiting_ids
+    assert with_client["id"] not in awaiting_ids
+
+
 def test_pages_render(client):
     s = _create(client, name="render-test")
     assert client.get("/").status_code == 200
