@@ -78,15 +78,16 @@ python -m venv .venv
 > Prefer to drive from the host? That still works: create the session there (`-Create`) or in the
 > UI, and each client **attaches automatically** (no id to copy — it auto-picks the lone awaiting
 > session, or pass `--attach-latest`). Either way the log is **auto-detected from
-> `--source`/`--role`** (override with `--log`).
+> `--source`/`--role`** (override with `--log`), and `-LaunchClient` / `--launch-client` finds the
+> client app for that role so the collector can wrap it and capture its stderr live.
 
 While capturing, collectors **post logs + link samples every ~30s** (`--post-interval`), so the
 session page updates **live** (both the session page and the sessions list auto-refresh until the
 session is stopped). The **host** collector also fills blank session metadata **live during** the
 capture (codec/resolution/fps/bitrate/HDR from the log; client IP + network path from the live
-connection) and never overrides values you set yourself. For a live **client** log, launch
-Artemis/Moonlight via the collector (`-Launch`) so it captures the app's real-time stderr — its
-`%TEMP%` log file is buffered and only flushes in bursts.
+connection) and never overrides values you set yourself. For a live **client** log, let the
+collector **wrap** Artemis/Moonlight (`-LaunchClient`, which finds the app for `--role`) so it
+captures the app's real-time stderr — its `%TEMP%` log file is buffered and only flushes in bursts.
 
 Full walkthrough (local vs remote WireGuard): [docs/host-client-setup.md](./docs/host-client-setup.md).
 

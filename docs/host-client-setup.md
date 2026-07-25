@@ -59,14 +59,15 @@ collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source host -Watch
 
 **Client — dictates the session** by creating it when you start a test:
 ```powershell
-# Windows Artemis: creates the session, then the watching host joins it within a few seconds
+# Windows Artemis: the collector wraps the app - it finds Artemis for -Role, launches it, and
+# captures its stderr live. Capture ends when you close Artemis.
 collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source client -Role artemis -Create `
-    -Name "couch LAN AV1" -Launch "$env:ProgramFiles\Artemis Game Streaming\Artemis.exe"
+    -Name "couch LAN AV1" -LaunchClient
 ```
 ```bash
-# Linux Moonlight
+# Linux Moonlight (finds the Flatpak export or /usr/bin/moonlight)
 collectors/linux/asl-session.sh --hub-url HUB --source client --role moonlight --create \
-    --name "couch LAN AV1" --interval 15
+    --name "couch LAN AV1" --launch-client --interval 15
 ```
 
 The host back-fills its log from the session's start time, so the connect/handshake lines are
@@ -97,13 +98,16 @@ collectors/linux/asl-session.sh --hub-url HUB --source client --role moonlight -
 ```powershell
 # Artemis: newest %TEMP%\Artemis-*.log is found automatically
 collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source client -Role artemis -AttachLatest
-# For LIVE client logs, launch Artemis via the collector (its %TEMP% log is buffered; stderr is
-# real-time). Capture runs until you close Artemis:
+# For LIVE client logs, let the collector wrap the app (its %TEMP% log is buffered; stderr is
+# real-time). -LaunchClient finds the app for -Role; capture runs until you close it:
 collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source client -Role artemis -AttachLatest `
-    -Launch "$env:ProgramFiles\Artemis Game Streaming\Artemis.exe"
-# Moonlight-Qt on Windows has no fixed log path — launch it the same way, or pass -LogPath:
+    -LaunchClient
+# Non-standard install? Point at the executable instead:
+collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source client -Role artemis -AttachLatest `
+    -Launch "D:\Games\Artemis\Artemis.exe"
+# Moonlight-Qt on Windows has no fixed log path — wrap it the same way, or pass -LogPath:
 collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source client -Role moonlight -AttachLatest `
-    -LogPath "$env:TEMP\Moonlight\Moonlight.log"
+    -LaunchClient
 ```
 
 > Prefer to be explicit? Pass `-SessionId <id>` / `--session-id <id>` instead of `-AttachLatest`.

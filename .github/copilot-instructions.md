@@ -63,9 +63,11 @@ a host with `python -m hub`.
   on an unprepared system Python with no `pip install` — use `urllib` (see `client.py`), never
   `httpx`/`requests`. The hub may use third-party deps; collectors may not.
 - **Parsers are split from runners** in `linkinfo.py`/`conninfo.py`/`hostmeta.py` and the iperf
-  parser. Pure parse functions take captured command text so they can be unit-tested against the
-  fixtures in `samples/*.txt`. When adding OS/command support, add a parse function + a sample +
-  a test; keep the subprocess call out of the parser.
+  parser; discovery is split the same way in `logfind.py` (log paths) and `appfind.py` (client
+  app executables), whose `candidate_*` functions are pure and unit-tested. Pure parse functions
+  take captured command text so they can be tested against the fixtures in `samples/*.txt`. When
+  adding OS/command support, add a parse function + a sample + a test; keep the subprocess call
+  out of the parser.
 - **Config is env-vars only**, all `ASL_`-prefixed and resolved in `hub/config.py` (e.g.
   `ASL_DATA_DIR`, `ASL_COPILOT_BACKEND`, `ASL_COPILOT_TOKEN`). Zero-config defaults must keep
   working. `config.py` reads env at import time (see the test note below).

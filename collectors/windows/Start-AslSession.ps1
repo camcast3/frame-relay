@@ -27,9 +27,14 @@
   .\Start-AslSession.ps1 -HubUrl http://192.168.69.159:8080 -Source client -Role artemis -AttachLatest
 
 .EXAMPLE
-  # LIVE client logs: launch Artemis via the collector and capture its stderr in real time
-  # (Artemis buffers its %TEMP% log, so the file only flushes in bursts). Capture runs until
-  # you close Artemis.
+  # LIVE client logs, no paths to type: the collector wraps Artemis - it finds the app for -Role,
+  # launches it, and captures its stderr in real time (the %TEMP% log is buffered and only
+  # flushes in bursts). Capture ends when you close Artemis.
+  .\Start-AslSession.ps1 -HubUrl http://192.168.69.159:8080 -Source client -Role artemis `
+      -Create -Name "couch LAN AV1" -LaunchClient
+
+.EXAMPLE
+  # Same, but point at a specific executable (non-standard install location)
   .\Start-AslSession.ps1 -HubUrl http://192.168.69.159:8080 -Source client -Role artemis `
       -AttachLatest -Launch "$env:ProgramFiles\Artemis Game Streaming\Artemis.exe"
 #>
@@ -45,6 +50,7 @@ param(
   [ValidateSet('apollo', 'moonlight', 'artemis')][string]$Role,
   [string[]]$LogPath,
   [string]$Launch,
+  [switch]$LaunchClient,
   [string[]]$LaunchArgs,
   [string]$Machine,
   [double]$IntervalSeconds = 15,
@@ -89,6 +95,7 @@ if ($Machine)     { $asl += @('--machine', $Machine) }
 if ($StopSession) { $asl += '--stop-session' }
 foreach ($p in $LogPath) { $asl += @('--log', $p) }
 if ($Launch)      { $asl += @('--launch', $Launch) }
+if ($LaunchClient){ $asl += '--launch-client' }
 foreach ($a in $LaunchArgs) { $asl += @('--launch-arg', $a) }
 if ($Name)        { $asl += @('--name', $Name) }
 if ($HostName)    { $asl += @('--host', $HostName) }

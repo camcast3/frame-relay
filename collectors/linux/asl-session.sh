@@ -7,9 +7,11 @@
 # The log path is auto-detected from --source/--role (see asl_collector/logfind.py); pass --log
 # only to override or when your install puts it somewhere unusual.
 #
-# Recommended (client dictates the session; a host running --watch joins it automatically):
+# Recommended (client dictates the session; a host running --watch joins it automatically).
+# --launch-client makes the collector *wrap* Moonlight: it finds the app for --role, launches it,
+# and captures its stderr live (the config-dir log is buffered). Capture ends when you close it.
 #   ./asl-session.sh --hub-url http://192.168.69.159:8080 --source client --role moonlight \
-#       --create --name "couch LAN AV1" --interval 15
+#       --create --name "couch LAN AV1" --launch-client --interval 15
 #
 # Attach instead to a session the host already created (no id to copy):
 #   ./asl-session.sh --hub-url http://192.168.69.159:8080 \

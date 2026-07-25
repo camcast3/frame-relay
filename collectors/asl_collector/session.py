@@ -29,7 +29,7 @@ import time
 from datetime import datetime, timezone
 from typing import Optional
 
-from . import client, conninfo, hostmeta, logslice, logfind
+from . import appfind, client, conninfo, hostmeta, logslice, logfind
 from .netmon import LinkMonitor
 
 
@@ -143,6 +143,18 @@ def run(args: argparse.Namespace) -> str:
     role = args.role or ("apollo" if args.source == "host" else "moonlight")
     if not args.wg_subnet:
         args.wg_subnet = list(DEFAULT_WG_SUBNETS)
+
+    # Resolve the app to wrap *before* touching the hub, so a missing install cannot leave an
+    # orphan session behind.
+    if not args.launch and getattr(args, "launch_client", False):
+        found = appfind.discover(role)
+        if not found:
+            raise SystemExit(
+                f"--launch-client: no {role} app found in the usual install locations; "
+                f"pass --launch <path> instead"
+            )
+        args.launch = found
+        print(f"auto-detected {role} app: {found}")
 
     if args.watch:
         return _watch(hub, args, machine, role)
@@ -258,13 +270,17 @@ def _print_once(msg: str, previous: str) -> None:
 
 def _capture(hub: str, sid: str, args: argparse.Namespace, machine: str, role: str,
              watch: bool = False) -> str:
-    # Launch mode: spawn the client app (Artemis/Moonlight-Qt) and capture its stderr live.
-    # Qt writes its diagnostic log to stderr in real time, unlike the buffered %TEMP% file.
+    # Launch mode: the collector wraps the client app (Artemis/Moonlight-Qt) - it spawns it and
+    # captures its stderr live, because Qt writes diagnostics there in real time while the
+    # %TEMP% file it also keeps is buffered and only flushes in bursts. Capture ends when the
+    # app exits, so "close the game stream" is all the operator has to do.
     launched = None
     stderr_buf: Optional[list[str]] = None
     stderr_lock = threading.Lock()
-    if args.launch:
-        cmd = [args.launch] + list(args.launch_arg or [])
+
+    launch = args.launch
+    if launch:
+        cmd = [launch] + list(args.launch_arg or [])
         try:
             launched = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -283,7 +299,8 @@ def _capture(hub: str, sid: str, args: argparse.Namespace, machine: str, role: s
             args.log = detected
             print(f"auto-detected {role} log: {detected[0]}")
         else:
-            print(f"no {role} log auto-detected for this platform; pass --log or --launch")
+            print(f"no {role} log auto-detected for this platform; pass --log, --launch or "
+                  f"--launch-client")
 
     logs = _expand(args.log)
     start = _now()
@@ -344,7 +361,7 @@ def _capture(hub: str, sid: str, args: argparse.Namespace, machine: str, role: s
                 if pending_lines:
                     text = "".join(pending_lines)
                     client.post_log(hub, sid, args.source, role, text, machine)
-                    print(f"posted {len(pending_lines)} log lines from <{args.launch} stderr>")
+                    print(f"posted {len(pending_lines)} log lines from <{launch} stderr>")
                     if args.source == "host":
                         host_log_parts.append(text)
             if monitor:
@@ -445,6 +462,9 @@ def build_parser() -> argparse.ArgumentParser:
                    "omit to auto-detect from --source/--role (see logfind.py)")
     p.add_argument("--launch", help="launch this client app (e.g. Artemis/Moonlight) and capture "
                    "its stderr live instead of tailing a buffered log file")
+    p.add_argument("--launch-client", action="store_true", dest="launch_client",
+                   help="same as --launch but finds the app for --role automatically "
+                        "(see appfind.py); capture ends when the app exits")
     p.add_argument("--launch-arg", action="append", default=[], dest="launch_arg",
                    help="argument to pass to --launch (repeatable)")
     p.add_argument("--machine", help="reporting machine name (default: hostname)")
