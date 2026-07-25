@@ -4,7 +4,12 @@
   Moonlight/Artemis client) and ship logs + Wi-Fi/link samples to the hub.
 
 .EXAMPLE
-  # Apollo host, attach to an existing session, sample the link every 15s until you press Enter
+  # HOST, recommended: leave this running. It waits for whichever session the client creates,
+  # captures into it, then waits for the next one. Safe to restart; no session id needed.
+  .\Start-AslSession.ps1 -HubUrl http://192.168.69.159:8080 -Source host -Watch
+
+.EXAMPLE
+  # Apollo host, attach to one existing session, sample the link every 15s until you press Enter
   .\Start-AslSession.ps1 -HubUrl https://apollo-streaming-lab.<tailnet>.ts.net `
       -SessionId 20260723T101951-ab12 -Source host
 
@@ -34,6 +39,8 @@ param(
   [string]$SessionId,
   [switch]$AttachLatest,
   [switch]$Create,
+  [switch]$Watch,
+  [double]$WatchIntervalSeconds = 5,
   [ValidateSet('host', 'client')][string]$Source = 'host',
   [ValidateSet('apollo', 'moonlight', 'artemis')][string]$Role,
   [string[]]$LogPath,
@@ -75,6 +82,7 @@ $asl = @('-m', 'asl_collector', '--hub-url', $HubUrl, '--source', $Source,
          '--duration', $DurationSeconds)
 if ($SessionId)   { $asl += @('--session-id', $SessionId) }
 if ($AttachLatest){ $asl += '--attach-latest' }
+if ($Watch)       { $asl += @('--watch', '--watch-interval', $WatchIntervalSeconds) }
 if ($Create)      { $asl += '--create' }
 if ($Role)        { $asl += @('--role', $Role) }
 if ($Machine)     { $asl += @('--machine', $Machine) }

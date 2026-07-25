@@ -67,12 +67,18 @@ python -m venv .venv
 > [docs/deploy.md](./docs/deploy.md)); for always-on use a Docker deploy is better.
 
 ## Capture a session (in brief)
-1. Create the session on the **host** collector (`-Create`) — or in the UI (**+ New session**).
-2. Run the collector on each **client**: it **attaches to the host's session automatically**
-   (no id to copy — auto-picks the lone awaiting session, or pass `--attach-latest`) and
-   **auto-detects the log from `--source`/`--role`** (override with `--log`).
+1. Leave the **host** collector running once in **watch mode** — it needs no session id and picks
+   up whatever session starts, then waits for the next one:
+   `Start-AslSession.ps1 -HubUrl HUB -Source host -Watch`
+2. The **client dictates the session**: start it with `--create` and the watching host joins
+   within seconds, back-filling its log from the session's start time.
 3. Optionally run an iperf3 test (`network/iperf_runner.py`).
-4. Stop the collectors, add **notes**, set the **outcome**, then click **Analyze**.
+4. Stop the client, add **notes**, set the **outcome**, then click **Analyze**.
+
+> Prefer to drive from the host? That still works: create the session there (`-Create`) or in the
+> UI, and each client **attaches automatically** (no id to copy — it auto-picks the lone awaiting
+> session, or pass `--attach-latest`). Either way the log is **auto-detected from
+> `--source`/`--role`** (override with `--log`).
 
 While capturing, collectors **post logs + link samples every ~30s** (`--post-interval`), so the
 session page updates **live** (both the session page and the sessions list auto-refresh until the

@@ -45,11 +45,40 @@ Below, `HUB` = the URL from this step (e.g. `http://192.168.86.246:8080`).
 ---
 
 ## C. Per test — LOCAL (LAN)
-Create the session on the **host** (it auto-fills codec/resolution/fps/bitrate/HDR from the log
-and the client IP + network path from the live connection). **Clients don't need the session id**
-— they attach to the session the host just created (auto-picked when it's the only one awaiting a
-client, or pass `-AttachLatest` / `--attach-latest` to always take the newest, no copy-paste).
-The **log location is auto-detected from `-Source`/`-Role`** too, so most clients need no path.
+
+### Recommended: host watches, client dictates
+The **host is always on, so run it once and leave it running.** In `-Watch` mode it waits for
+whichever session the client creates, captures into it, then goes back to waiting — no session
+id, no restart between tests. It is idempotent: a session leaves the "awaiting host" list as
+soon as the host posts to it, so restarting the watcher never double-captures.
+
+**Host — Apollo (Windows), start once and leave it:**
+```powershell
+collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source host -Watch
+```
+
+**Client — dictates the session** by creating it when you start a test:
+```powershell
+# Windows Artemis: creates the session, then the watching host joins it within a few seconds
+collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source client -Role artemis -Create `
+    -Name "couch LAN AV1" -Launch "$env:ProgramFiles\Artemis Game Streaming\Artemis.exe"
+```
+```bash
+# Linux Moonlight
+collectors/linux/asl-session.sh --hub-url HUB --source client --role moonlight --create \
+    --name "couch LAN AV1" --interval 15
+```
+
+The host back-fills its log from the session's start time, so the connect/handshake lines are
+captured even though the host joined a moment later. It moves on when the session is stopped or
+when the next one starts.
+
+### Alternative: host creates, clients attach
+Still supported if you'd rather drive from the host. It auto-fills codec/resolution/fps/bitrate/
+HDR from the log and the client IP + network path from the live connection. **Clients don't need
+the session id** — they attach to the session the host just created (auto-picked when it's the
+only one awaiting a client, or pass `-AttachLatest` / `--attach-latest` to always take the
+newest). The **log location is auto-detected from `-Source`/`-Role`** too.
 
 **Host — Apollo (Windows):**
 ```powershell

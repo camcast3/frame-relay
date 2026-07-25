@@ -1,5 +1,5 @@
 """Unit tests for log slicing (byte-offset capture + wall-clock slice + tail fallback)."""
-from datetime import datetime
+from datetime import datetime, timezone
 
 from asl_collector import logslice
 from conftest import SAMPLES
@@ -22,6 +22,40 @@ def test_slice_by_time_keeps_window():
 
 def test_slice_by_time_none_when_no_timestamps():
     assert logslice.slice_by_time("line one\nline two\n", datetime(2026, 1, 1), datetime(2030, 1, 1)) is None
+
+
+def test_slice_by_time_accepts_aware_bounds():
+    """Callers work in aware UTC; log lines are naive *local* wall clock.
+
+    Comparing them raw raises TypeError, and stripping the zone without converting would shift
+    the window by the UTC offset - so an aware bound must select the same lines as the naive
+    local instant it represents.
+    """
+    text = (SAMPLES / "apollo-sunshine.log").read_text()
+    naive_start = datetime(2026, 7, 23, 10, 0, 0)
+    naive_stop = datetime(2026, 7, 23, 10, 0, 20)
+    expected = logslice.slice_by_time(text, naive_start, naive_stop)
+
+    local_tz = datetime.now().astimezone().tzinfo
+    aware_start = naive_start.replace(tzinfo=local_tz).astimezone(timezone.utc)
+    aware_stop = naive_stop.replace(tzinfo=local_tz).astimezone(timezone.utc)
+
+    got = logslice.slice_by_time(text, aware_start, aware_stop)
+    assert got == expected
+    assert "CLIENT CONNECTED" in got
+    assert "CLIENT DISCONNECTED" not in got
+
+
+def test_slice_file_accepts_aware_bounds(tmp_path):
+    log = tmp_path / "sunshine.log"
+    log.write_text("[2026-07-23 10:00:01]: Info: CLIENT CONNECTED\n"
+                   "[2026-07-23 10:00:30]: Info: CLIENT DISCONNECTED\n")
+    local_tz = datetime.now().astimezone().tzinfo
+    start = datetime(2026, 7, 23, 10, 0, 0, tzinfo=local_tz).astimezone(timezone.utc)
+    stop = datetime(2026, 7, 23, 10, 0, 20, tzinfo=local_tz).astimezone(timezone.utc)
+    out = logslice.slice_file(str(log), start, stop)
+    assert "CLIENT CONNECTED" in out
+    assert "CLIENT DISCONNECTED" not in out
 
 
 def test_tail():

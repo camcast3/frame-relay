@@ -15,10 +15,14 @@ def create(data: SessionCreate):
 
 
 @router.get("")
-def list_all(awaiting_client: bool = False):
-    """List sessions. Pass ?awaiting_client=true to return only sessions whose
-    client metadata field is still empty/null (host-created, no client attached)."""
-    return service.list_sessions(awaiting_client=awaiting_client)
+def list_all(awaiting_client: bool = False, awaiting_host: bool = False):
+    """List sessions, newest first.
+
+    `?awaiting_client=true` returns active sessions no client has posted a log to yet (the
+    host-first workflow); `?awaiting_host=true` is the mirror image, used by a host collector
+    running in watch mode to pick up a session the client just created.
+    """
+    return service.list_sessions(awaiting_client=awaiting_client, awaiting_host=awaiting_host)
 
 
 @router.get("/{session_id}")

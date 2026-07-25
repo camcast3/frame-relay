@@ -25,6 +25,7 @@ import platform
 import subprocess
 import sys
 import threading
+import time
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -82,6 +83,11 @@ def _enrich_host(hub: str, sid: str, log_text: str, client_ip: Optional[str],
 
 DEFAULT_WG_SUBNETS = ["192.168.2.0/24"]  # user's WireGuard VLAN (override with --wg-subnet)
 
+# How many times to retry one session in --watch mode before ignoring it. A session that
+# cannot be captured stays on the awaiting-host list, so an unguarded retry loop would spin
+# on it forever and never pick up the next test.
+WATCH_MAX_FAILURES = 3
+
 
 def _describe(s: dict) -> str:
     name = s.get("name") or "(unnamed)"
@@ -138,6 +144,9 @@ def run(args: argparse.Namespace) -> str:
     if not args.wg_subnet:
         args.wg_subnet = list(DEFAULT_WG_SUBNETS)
 
+    if args.watch:
+        return _watch(hub, args, machine, role)
+
     sid = args.session_id
     if not sid:
         if not args.create:
@@ -153,7 +162,102 @@ def run(args: argparse.Namespace) -> str:
                 "bitrate_mbps": args.bitrate_mbps, "hdr": args.hdr,
             })
             print(f"created session {sid}")
+    return _capture(hub, sid, args, machine, role)
 
+
+def _session_started_at(hub: str, sid: str) -> Optional[datetime]:
+    """When the session began, so a watching collector can back-fill its log from there."""
+    try:
+        s = client.get_session(hub, sid)
+    except Exception:  # noqa: BLE001
+        return None
+    if not s:
+        return None
+    raw = s.get("started_at") or s.get("created_at")
+    if not raw:
+        return None
+    try:
+        ts = datetime.fromisoformat(str(raw))
+    except ValueError:
+        return None
+    return ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)
+
+
+def _session_ended(hub: str, sid: str) -> bool:
+    """True once the hub says this session is stopped, or it has been deleted."""
+    try:
+        s = client.get_session(hub, sid)
+    except Exception:  # noqa: BLE001 - a hub blip is not a reason to stop capturing
+        return False
+    if s is None:
+        return True
+    return str(s.get("status", "")).lower() == "stopped"
+
+
+def _newer_session_waiting(hub: str, sid: str) -> bool:
+    """True when a *different* session is now awaiting a host - i.e. the next test started."""
+    try:
+        waiting = client.list_sessions(hub, awaiting_host=True)
+    except Exception:  # noqa: BLE001
+        return False
+    return any(s.get("id") != sid for s in waiting)
+
+
+def _watch(hub: str, args: argparse.Namespace, machine: str, role: str) -> str:
+    """Run as a long-lived collector that follows whatever session is current.
+
+    The client (or the UI) creates the session; this side just notices and contributes its log
+    and link samples. Idempotent by construction: a session drops off the awaiting-host list as
+    soon as we post to it, so restarting this process never double-captures, and it is safe to
+    leave running across many tests.
+    """
+    print(f"watching {hub} for sessions to capture ({args.source}/{role}) on {machine}; "
+          f"polling every {args.watch_interval}s - Ctrl+C to stop")
+    last = ""
+    failures: dict[str, int] = {}
+    skip: set[str] = set()
+    while True:
+        try:
+            waiting = client.list_sessions(hub, awaiting_host=True)
+        except Exception as e:  # noqa: BLE001
+            _print_once(f"hub unreachable, retrying: {e}", last)
+            last = f"hub unreachable, retrying: {e}"
+            time.sleep(args.watch_interval)
+            continue
+        last = ""
+        target = next((s for s in waiting if s.get("id") not in skip), None)
+        if target is None:
+            time.sleep(args.watch_interval)
+            continue
+
+        sid = target["id"]
+        print(f"\nattaching to session {sid} ({target.get('name') or 'unnamed'})")
+        try:
+            _capture(hub, sid, args, machine, role, watch=True)
+            failures.pop(sid, None)
+        except KeyboardInterrupt:
+            raise
+        except Exception as e:  # noqa: BLE001 - never let one bad session kill the watcher
+            # A session we cannot capture stays on the awaiting-host list, so without a guard
+            # we would spin on it forever and never reach the next one.
+            failures[sid] = failures.get(sid, 0) + 1
+            print(f"capture for {sid} failed ({failures[sid]}/{WATCH_MAX_FAILURES}): {e}")
+            if failures[sid] >= WATCH_MAX_FAILURES:
+                skip.add(sid)
+                print(f"giving up on {sid}; ignoring it and watching for others")
+            time.sleep(args.watch_interval)
+            continue
+        print("watching for the next session...")
+
+
+def _print_once(msg: str, previous: str) -> None:
+    """Avoid spamming an unreachable-hub message every poll."""
+    if msg != previous:
+        print(msg)
+
+
+def _capture(hub: str, sid: str, args: argparse.Namespace, machine: str, role: str,
+             watch: bool = False) -> str:
     # Launch mode: spawn the client app (Artemis/Moonlight-Qt) and capture its stderr live.
     # Qt writes its diagnostic log to stderr in real time, unlike the buffered %TEMP% file.
     launched = None
@@ -188,6 +292,21 @@ def run(args: argparse.Namespace) -> str:
     host_log_parts: list[str] = []
     posted_link_idx = 0
     flush_lock = threading.Lock()
+
+    if watch:
+        # The session already existed before we noticed it, so back-fill the log from when it
+        # started rather than from now - otherwise the connect/handshake lines are lost.
+        started = _session_started_at(hub, sid)
+        if started:
+            start = started
+            for path in logs:
+                back = logslice.slice_file(path, started, _now())
+                if back.strip():
+                    client.post_log(hub, sid, args.source, role, back, machine)
+                    posted_any[path] = True
+                    if args.source == "host":
+                        host_log_parts.append(back)
+                    print(f"back-filled {len(back.splitlines())} log lines from {path}")
 
     monitor = None
     conn_monitor = None
@@ -259,8 +378,18 @@ def run(args: argparse.Namespace) -> str:
     print(f"capturing session {sid} ({args.source}/{role}) on {machine} - "
           f"{'sampling link every %ss' % args.interval if monitor else 'no link sampling'}; {live}")
     try:
-        if args.duration and args.duration > 0:
-            import time
+        if watch:
+            print("capturing until the session is stopped on the hub, or the next one starts "
+                  "(Ctrl+C to stop watching)...")
+            while True:
+                time.sleep(args.watch_interval)
+                if _session_ended(hub, sid):
+                    print("session stopped on the hub")
+                    break
+                if _newer_session_waiting(hub, sid):
+                    print("a newer session is awaiting a host; moving to it")
+                    break
+        elif args.duration and args.duration > 0:
             time.sleep(args.duration)
         elif launched is not None:
             print("capturing until the launched app exits (Ctrl+C to stop early)...")
@@ -304,6 +433,12 @@ def build_parser() -> argparse.ArgumentParser:
                    help="attach to the newest session awaiting a client without prompting "
                         "(no session-id copy-paste; ideal for scripted clients)")
     p.add_argument("--create", action="store_true", help="create a new session")
+    p.add_argument("--watch", action="store_true",
+                   help="run as a long-lived collector: wait for a session the other side "
+                        "created, capture into it, then wait for the next one. Idempotent - "
+                        "safe to leave running across many tests (typical for the host)")
+    p.add_argument("--watch-interval", type=float, default=5.0, dest="watch_interval",
+                   help="seconds between hub polls in --watch mode (default 5)")
     p.add_argument("--source", choices=["host", "client"], default="client")
     p.add_argument("--role", choices=["apollo", "moonlight", "artemis"])
     p.add_argument("--log", action="append", default=[], help="log file path/glob (repeatable); "

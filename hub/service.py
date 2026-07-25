@@ -46,16 +46,27 @@ def create_session(data: SessionCreate) -> dict[str, Any]:
     return get_session(sid)  # type: ignore[return-value]
 
 
-def list_sessions(awaiting_client: bool = False) -> list[dict[str, Any]]:
+def list_sessions(awaiting_client: bool = False,
+                  awaiting_host: bool = False) -> list[dict[str, Any]]:
+    """List sessions, newest first.
+
+    "Awaiting a client/host" means that side has not posted any log yet - not merely that the
+    corresponding metadata field is blank. The host collector fills the client name in from the
+    live connection while it is still running, so keying off names would hide a session from the
+    other collector seconds after the first one starts. A stopped session awaits nobody.
+    """
     q = "SELECT * FROM sessions"
-    if awaiting_client:
-        # "Awaiting a client" means no client has actually attached yet - i.e. no client log
-        # chunks - rather than merely that the client *name* field is blank. The host collector
-        # fills that name in from the live connection while it is still running, so keying off
-        # it would hide the session from the client collector seconds after the host starts.
-        q += (" WHERE status != 'stopped'"
-              " AND NOT EXISTS (SELECT 1 FROM log_chunks lc"
-              " WHERE lc.session_id = sessions.id AND lc.source = 'client')")
+    clauses: list[str] = []
+    if awaiting_client or awaiting_host:
+        clauses.append("status != 'stopped'")
+    for flag, source in ((awaiting_client, "client"), (awaiting_host, "host")):
+        if flag:
+            clauses.append(
+                "NOT EXISTS (SELECT 1 FROM log_chunks lc"
+                f" WHERE lc.session_id = sessions.id AND lc.source = '{source}')"
+            )
+    if clauses:
+        q += " WHERE " + " AND ".join(clauses)
     q += " ORDER BY created_at DESC"
     with db.db() as conn:
         rows = conn.execute(q).fetchall()

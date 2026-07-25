@@ -111,6 +111,28 @@ def test_awaiting_client_filter(client):
     assert stopped["id"] not in awaiting_ids
 
 
+def test_awaiting_host_filter(client):
+    """Mirror image: a host watcher picks up sessions the client created."""
+    fresh = _create(client, name="client-made")
+    with_host = _create(client, name="host-attached")
+    client.post(f"/api/sessions/{with_host['id']}/logs",
+                json={"source": "host", "role": "apollo", "content": "Info: started"})
+    stopped = _create(client, name="finished")
+    client.post(f"/api/sessions/{stopped['id']}/stop")
+
+    awaiting_ids = {s["id"] for s in
+                    client.get("/api/sessions", params={"awaiting_host": "true"}).json()}
+    assert fresh["id"] in awaiting_ids
+    assert with_host["id"] not in awaiting_ids
+    assert stopped["id"] not in awaiting_ids
+
+    # a session can await both sides at once, and posting one side does not affect the other
+    both = {s["id"] for s in client.get(
+        "/api/sessions", params={"awaiting_host": "true", "awaiting_client": "true"}).json()}
+    assert fresh["id"] in both
+    assert with_host["id"] not in both
+
+
 def test_pages_render(client):
     s = _create(client, name="render-test")
     assert client.get("/").status_code == 200

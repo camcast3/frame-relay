@@ -64,8 +64,25 @@ def extract_timestamp(line: str) -> Optional[datetime]:
     return None
 
 
+def _naive_local(dt: datetime) -> datetime:
+    """Normalise a bound to naive *local* time to match how log lines are stamped.
+
+    Apollo/Sunshine writes local wall-clock timestamps with no zone, while callers naturally
+    work in aware UTC. Comparing the two directly raises TypeError, and merely stripping the
+    zone would be wrong by the UTC offset - convert first, then drop it.
+    """
+    if dt.tzinfo is None:
+        return dt
+    return dt.astimezone().replace(tzinfo=None)
+
+
 def slice_by_time(text: str, start: datetime, stop: datetime) -> Optional[str]:
-    """Keep lines whose timestamp is within [start, stop]. None if nothing has a timestamp."""
+    """Keep lines whose timestamp is within [start, stop]. None if nothing has a timestamp.
+
+    ``start``/``stop`` may be naive local or timezone-aware; both are normalised to the naive
+    local basis that log timestamps use.
+    """
+    start, stop = _naive_local(start), _naive_local(stop)
     kept: list[str] = []
     last: Optional[datetime] = None
     saw_ts = False
