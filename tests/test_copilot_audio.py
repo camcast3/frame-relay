@@ -14,15 +14,66 @@ def _ctx(host_log: str = "", client_log: str = "") -> dict:
 
 
 def test_out_of_sequence_audio_is_detected():
+    """Mid-stream OOS (no audio restart nearby) means the path is losing audio."""
     client_log = (
-        "00:00:11 - SDL Info (0): Leaving fast audio recovery mode after OOS audio data (863 < 864)\n"
-        "00:02:31 - SDL Info (0): Leaving fast audio recovery mode after OOS audio data (912 < 913)\n"
+        "00:00:06 - SDL Info (0): Starting audio stream...\n"
+        "00:04:31 - SDL Info (0): Leaving fast audio recovery mode after OOS audio data (912 < 913)\n"
+        "00:07:02 - SDL Info (0): Leaving fast audio recovery mode after OOS audio data (401 < 402)\n"
     )
     net = copilot.analyze_signals(_ctx(client_log=client_log))["network"]
-    assert any("out-of-sequence audio 2x" in n for n in net)
+    assert any("out-of-sequence audio 2x mid-stream" in n for n in net)
 
     diag = copilot._mock(_ctx(client_log=client_log), None)
     assert "Audio packet loss" in diag
+
+
+def test_startup_resync_is_not_treated_as_loss():
+    """Real capture: every OOS landed 1-4s after an audio (re)init - normal resync."""
+    client_log = (
+        "00:00:06 - SDL Info (0): Initializing audio stream...\n"
+        "00:00:07 - SDL Info (0): Received first audio packet after 200 ms\n"
+        "00:00:11 - SDL Info (0): Leaving fast audio recovery mode after OOS audio data (863 < 864)\n"
+        "00:11:12 - SDL Info (0): Initializing audio stream...\n"
+        "00:11:16 - SDL Info (0): Leaving fast audio recovery mode after OOS audio data (607 < 608)\n"
+        "00:15:44 - SDL Info (0): Initializing audio stream...\n"
+        "00:15:46 - SDL Info (0): Leaving fast audio recovery mode after OOS audio data (223 < 224)\n"
+    )
+    net = copilot.analyze_signals(_ctx(client_log=client_log))["network"]
+    assert any("normal initial resync" in n for n in net)
+    assert not any("mid-stream" in n for n in net)
+
+
+def test_network_frame_drops_are_reported():
+    """The client's own performance summary is the most reliable measure of the path."""
+    client_log = (
+        "Incoming frame rate from network: 57.48 FPS\n"
+        "Frames dropped by your network connection: 3.45%\n"
+        "Frames dropped due to network jitter: 0.05%\n"
+        "Average network latency: 1 ms (variance: 0 ms)\n"
+    )
+    net = copilot.analyze_signals(_ctx(client_log=client_log))["network"]
+    assert any("3.45% of frames dropped by the network connection" in n for n in net)
+    # low latency + low variance + no jitter drops => loss, not congestion delay
+    assert any("packet *loss*, not congestion delay" in n for n in net)
+
+    diag = copilot._mock(_ctx(client_log=client_log), None)
+    assert "Packet loss on the path to the client" in diag
+
+
+def test_healthy_frame_drops_are_not_reported():
+    client_log = (
+        "Frames dropped by your network connection: 0.02%\n"
+        "Frames dropped due to network jitter: 0.00%\n"
+        "Average network latency: 1 ms (variance: 0 ms)\n"
+    )
+    net = copilot.analyze_signals(_ctx(client_log=client_log))["network"]
+    assert not any("dropped by the network connection" in n for n in net)
+
+
+def test_consecutive_drop_limit_is_flagged():
+    client_log = "00:16:30 - SDL Info (0): Reached consecutive drop limit\n"
+    net = copilot.analyze_signals(_ctx(client_log=client_log))["network"]
+    assert any("consecutive-drop limit" in n for n in net)
 
 
 def test_surround_opus_is_flagged():

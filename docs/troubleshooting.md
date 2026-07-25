@@ -128,6 +128,40 @@ Confirm from the host log that the next session reports `2 channels, 512 kbps`. 
 genuinely outputting to a 5.1/7.1 receiver, stereo is the better choice — downmixed surround
 sounds no better than stereo on handheld speakers or headphones.
 
+### Read the client's own performance stats
+If stereo doesn't fix it, stop guessing from the host — **the client measures the path
+end-to-end**. Moonlight/Artemis writes a performance summary to its log:
+
+```
+Incoming frame rate from network: 57.48 FPS
+Frames dropped by your network connection: 3.45%     <- packet loss
+Frames dropped due to network jitter:      0.05%     <- congestion delay
+Average network latency: 1 ms (variance: 0 ms)
+```
+
+Read them together — they separate the two failure modes:
+
+| Pattern | Meaning | Fix |
+|---------|---------|-----|
+| Network drops **> 1%**, low latency + low variance, jitter drops ~0 | **Packet loss** — the link can't absorb the bitrate's bursts | Lower the bitrate until drops fall under 1%; compare a wired run |
+| Jitter drops high, latency variance high | **Congestion delay** | Fix bufferbloat/QoS on the path |
+| Both near zero, but you still hear gaps | Loss is **not** on the network | Look at the client's audio stack (WASAPI/underruns, power management) |
+
+`Reached consecutive drop limit` followed by `IDR frame request sent` means a whole burst was
+lost — long enough to hear as an audio gap. The hub's **Analyze** button reads all of these
+automatically.
+
+### Out-of-sequence audio: startup vs mid-stream
+The client logs `Leaving fast audio recovery mode after OOS audio data (N < N+1)` when audio
+packets arrive lost or reordered. **Timing decides whether it matters:**
+
+- Within ~15s of `Initializing audio stream` → the normal initial resync. Harmless, and it
+  happens on every connect and every app launch.
+- **Mid-stream, well clear of any restart** → the path really is losing audio.
+
+Line the events up against the audio (re)inits before concluding anything; the analyzer does
+this split for you.
+
 If stereo alone doesn't fix it:
 
 1. **Lower the video bitrate.** The requested bitrate (`Client Requested bitrate is [...]` in the

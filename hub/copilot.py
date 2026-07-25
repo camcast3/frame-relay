@@ -66,6 +66,27 @@ BENIGN_LOG_PATTERNS = (
 AUDIO_OOS_RE = re.compile(r"OOS audio data", re.I)
 AUDIO_RECOVERY_RE = re.compile(r"fast audio recovery", re.I)
 OPUS_CHANNELS_RE = re.compile(r"Opus initialized:.*?(\d+)\s+channels", re.I)
+AUDIO_INIT_RE = re.compile(r"Initializing audio stream|Starting audio stream", re.I)
+# Client log lines are stamped with an elapsed "HH:MM:SS - " prefix.
+CLIENT_TS_RE = re.compile(r"^\s*(\d+):(\d{2}):(\d{2})\s*-")
+# An out-of-sequence audio event this soon after the audio stream starts is just the normal
+# initial resync, not a sign of a lossy path.
+AUDIO_STARTUP_GRACE_S = 15
+
+# Moonlight/Artemis prints a performance summary when a stream ends (and to its log during
+# the stream). These numbers are the client's own measurement of the path and are far more
+# reliable than guessing from the host side.
+NET_FRAME_DROP_RE = re.compile(
+    r"Frames dropped by your network connection:\s*([\d.]+)\s*%", re.I)
+JITTER_FRAME_DROP_RE = re.compile(
+    r"Frames dropped due to network jitter:\s*([\d.]+)\s*%", re.I)
+NET_LATENCY_RE = re.compile(
+    r"Average network latency:\s*(\d+)\s*ms(?:\s*\(variance:\s*(\d+)\s*ms\))?", re.I)
+IDR_DROP_LIMIT_RE = re.compile(r"Reached consecutive drop limit", re.I)
+
+# Frame loss the client attributes to the network. Anything sustained above this is visible
+# as hitching and audible as audio dropouts, well before the 5% iperf3 threshold.
+FRAME_DROP_WARN_PCT = 1.0
 
 
 # --- context ------------------------------------------------------------------
@@ -124,6 +145,38 @@ def _log_findings(text: str) -> list[str]:
     return out[:15]
 
 
+def _client_ts(line: str) -> int | None:
+    """Elapsed seconds from a client log line's "HH:MM:SS - " prefix."""
+    m = CLIENT_TS_RE.match(line)
+    if not m:
+        return None
+    h, mi, s = (int(g) for g in m.groups())
+    return h * 3600 + mi * 60 + s
+
+
+def _count_oos(client_log: str) -> tuple[int, int]:
+    """Split out-of-sequence audio events into (startup_resync, mid_stream).
+
+    Every audio (re)init is followed by a resync as the client finds the stream, so those
+    events are expected. Only events well clear of a restart mean the path is losing audio.
+    """
+    startup = mid = 0
+    last_init: int | None = None
+    for line in client_log.splitlines():
+        ts = _client_ts(line)
+        if AUDIO_INIT_RE.search(line):
+            last_init = ts
+            continue
+        if not AUDIO_OOS_RE.search(line):
+            continue
+        if (ts is not None and last_init is not None
+                and 0 <= ts - last_init <= AUDIO_STARTUP_GRACE_S):
+            startup += 1
+        else:
+            mid += 1
+    return startup, mid
+
+
 def _audio_findings(host_log: str, client_log: str) -> list[str]:
     """Detect audio dropouts, which show up as lost/reordered audio packets on the client.
 
@@ -132,14 +185,18 @@ def _audio_findings(host_log: str, client_log: str) -> list[str]:
     """
     findings: list[str] = []
 
-    oos = len(AUDIO_OOS_RE.findall(client_log))
-    recovery = len(AUDIO_RECOVERY_RE.findall(client_log))
-    if oos:
+    startup_oos, mid_oos = _count_oos(client_log)
+    if mid_oos:
         findings.append(
-            f"Client reported out-of-sequence audio {oos}x (entered fast audio recovery "
-            f"{recovery}x) - audio packets are being lost or reordered on the path to the "
-            f"client, which is heard as brief audio dropouts. A single event right after "
-            f"connect is normal start-up resync; repeated events during a stream are not."
+            f"Client reported out-of-sequence audio {mid_oos}x mid-stream - audio packets are "
+            f"being lost or reordered on the path to the client, which is heard as brief audio "
+            f"dropouts."
+        )
+    elif startup_oos:
+        findings.append(
+            f"Client reported out-of-sequence audio {startup_oos}x, but every event follows an "
+            f"audio (re)start within {AUDIO_STARTUP_GRACE_S}s, so this is the normal initial "
+            f"resync rather than a lossy path. Look elsewhere for steady-state audio dropouts."
         )
 
     chans = OPUS_CHANNELS_RE.search(host_log)
@@ -155,6 +212,43 @@ def _audio_findings(host_log: str, client_log: str) -> list[str]:
                 f"handheld or phone this alone can cause audio dropouts. The client chooses "
                 f"this - set the client's audio configuration to stereo to rule it out."
             )
+    return findings
+
+
+def _client_stat_findings(client_log: str) -> list[str]:
+    """Read Moonlight/Artemis' own performance summary out of the client log.
+
+    The client measures the path end-to-end, so these numbers separate *loss* from *jitter*
+    and from host-side slowness far more reliably than inference from the host side.
+    """
+    findings: list[str] = []
+
+    drops = [float(m) for m in NET_FRAME_DROP_RE.findall(client_log)]
+    worst = max(drops) if drops else 0.0
+    if worst >= FRAME_DROP_WARN_PCT:
+        findings.append(
+            f"Client reports {worst:.2f}% of frames dropped by the network connection "
+            f"(threshold {FRAME_DROP_WARN_PCT}%). The path is losing packets, which shows up "
+            f"as hitching video and audio dropouts."
+        )
+
+        lat = NET_LATENCY_RE.search(client_log)
+        jitter_drops = [float(m) for m in JITTER_FRAME_DROP_RE.findall(client_log)]
+        worst_jitter = max(jitter_drops) if jitter_drops else 0.0
+        if lat and lat.group(2) is not None and int(lat.group(2)) <= 1 and worst_jitter < 1.0:
+            findings.append(
+                f"Network latency is only {lat.group(1)} ms with {lat.group(2)} ms variance and "
+                f"{worst_jitter:.2f}% jitter-related drops, so this is packet *loss*, not "
+                f"congestion delay - typical of a Wi-Fi link that cannot absorb the bitrate's "
+                f"bursts. Lower the client's bitrate (or move it to Ethernet) rather than "
+                f"chasing latency."
+            )
+
+    if IDR_DROP_LIMIT_RE.search(client_log):
+        findings.append(
+            "Client hit its consecutive-drop limit and had to request a new IDR/key frame - a "
+            "burst of packets was lost outright, which is long enough to hear as an audio gap."
+        )
     return findings
 
 
@@ -200,6 +294,7 @@ def analyze_signals(ctx: dict[str, Any]) -> dict[str, Any]:
     host_findings = _log_findings(ctx.get("host_log_tail", ""))
     client_findings = _log_findings(ctx.get("client_log_tail", ""))
     findings += _audio_findings(ctx.get("host_log_tail", ""), ctx.get("client_log_tail", ""))
+    findings += _client_stat_findings(ctx.get("client_log_tail", ""))
     return {
         "network": findings,
         "host_log": host_findings,
@@ -257,7 +352,11 @@ def _mock(ctx: dict[str, Any], question: str | None) -> str:
     lines.append("\n**Likely focus:**")
     if any("roam" in n for n in net):
         lines.append("- Wi-Fi roaming mid-stream. Lock the client to one AP/band or use Ethernet, then re-test.")
-    elif any("out-of-sequence audio" in n for n in net):
+    elif any("dropped by the network connection" in n for n in net):
+        lines.append("- Packet loss on the path to the client. Lower the client's bitrate until the "
+                     "drop rate falls below 1%, and compare against a wired run to confirm the "
+                     "wireless link is the limit.")
+    elif any("out-of-sequence audio" in n and "mid-stream" in n for n in net):
         lines.append("- Audio packet loss on the path to the client. Check the client's link "
                      "(Wi-Fi vs Ethernet), lower the bitrate so bursts stop crowding out audio, "
                      "and confirm the client is set to stereo.")
