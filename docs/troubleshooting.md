@@ -130,14 +130,22 @@ sounds no better than stereo on handheld speakers or headphones.
 
 If stereo alone doesn't fix it:
 
-1. **Lower the video bitrate.** Audio and video share one connection; a very high request (the
-   client asks for it — check `Client Requested bitrate is [...]` in the host log) can starve
-   audio packets on a Wi-Fi client. Try ~60-80 Mbps.
+1. **Lower the video bitrate.** The requested bitrate (`Client Requested bitrate is [...]` in the
+   host log) is a **cap, not a constant rate** — the encoder only spends what the content needs,
+   so a high number isn't continuously saturating the link. The risk is **bursts**: on scene
+   changes and fast motion the encoder spikes toward the cap, and on a Wi-Fi client those spikes
+   drop packets — including the small audio packets. AV1 looks excellent at ~50-80 Mbps for
+   1440p/60, so caps far above that buy burst risk for no visible quality.
 2. **Thin out host virtual-audio drivers.** Stacked virtual mixers (SteelSeries Sonar, Sonic
    Studio, Nahimic, etc.) sit in the capture path and are a frequent cause of crackle/dropouts.
    Disable them and set a plain physical device as the default output.
 3. **Check the link.** Capture a session and look at the RSSI/roam timeline and an iperf3 run —
    loss > 5% or jitter > 1 ms will break audio before it visibly breaks video.
+
+> **Change one variable at a time.** Fix the audio config, re-test, *then* touch the bitrate.
+> Changing both at once tells you nothing about which mattered — and if stereo alone fixes it you
+> keep your full bitrate headroom. Capturing each attempt as a session makes the before/after
+> comparison objective instead of going by ear.
 
 ## Workflow
 1. Reproduce with verbose logging on (see [log-paths.md](./log-paths.md)).
