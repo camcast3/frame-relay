@@ -12,8 +12,10 @@ troubleshooting docs.
 | No/black video, decoder errors | Codec/HDR unsupported by client | Client log flags (HEVC/AV1/HDR); try HEVC SDR first |
 | Can't connect remotely | NAT / port forwarding | Run **MIST** (Moonlight Internet Streaming Tester); attach findings to notes |
 | Can't pair / web UI | Credentials / firewall | Apollo log pairing lines; `sunshine --creds <user> <pass>` |
-<<<<<<< HEAD
 | Stuck on H.264, no HEVC/AV1 offered | **Encoder ran on a software adapter** — no hardware GPU available to the captured display | Host log: `Found H.264 encoder: libx264 [software]`. See [No hardware encoder / no AV1](#no-hardware-encoder--no-av1) below |
+| Audio dropouts / stuttering audio on the client | **7.1 surround** requested by the client — 8-channel Opus the client must decode and downmix | Host log: `Opus initialized: 48 kHz, 8 channels, 2048 kbps`. See [Audio dropouts](#audio-dropouts) below |
+| Session page shows no client logs/samples mid-capture | Collector posts on a timer, not instantly | Collectors flush every `--post-interval` (~30s) and the page auto-refreshes; wait one interval, or press **Enter** to force a final flush. `client` IP / network-path are filled by the **host** collector |
+| Client (Artemis) logs only appear at stream end | Artemis **buffers** its `%TEMP%` log, flushing in bursts | Launch Artemis via the collector (`-Launch`) to capture its **stderr live** — see [log-paths.md](./log-paths.md) |
 
 ## No hardware encoder / no AV1
 
@@ -98,11 +100,44 @@ to the single virtual display.
 
 > AV1 **encode** on AMD requires **RDNA3 (RX 7000) or newer**; RDNA2 and older can decode AV1 but
 > not encode it. Media servers like Plex/Jellyfin playing AV1 only prove *decode*, not encode.
-| Session page shows no client logs/samples mid-capture | Collector posts on a timer, not instantly | Collectors flush every `--post-interval` (~30s) and the page auto-refreshes; wait one interval, or press **Enter** to force a final flush. `client` IP / network-path are filled by the **host** collector on stop |
-=======
-| Session page shows no client logs/samples mid-capture | Collector posts on a timer, not instantly | Collectors flush every `--post-interval` (~30s) and the page auto-refreshes; wait one interval, or press **Enter** to force a final flush. `client` IP / network-path are filled by the **host** collector |
-| Client (Artemis) logs only appear at stream end | Artemis **buffers** its `%TEMP%` log, flushing in bursts | Launch Artemis via the collector (`-Launch`) to capture its **stderr live** — see [log-paths.md](./log-paths.md) |
->>>>>>> 7d7eba81a395d48e497c8e57fa253a1b0c68ad6c
+
+## Audio dropouts
+
+Brief gaps of silence or stuttering audio on the client, while **video stays smooth** and the
+host log shows **no audio errors**, usually means the client can't keep up with the audio stream
+rather than anything being wrong on the host.
+
+Check what the host negotiated — it logs the sink and Opus setup at the start of every session:
+
+```
+Info: Selected audio sink: virtual-Surround 7.1{...}
+Info: Changed virtual audio sink format to [S24 48000 7.1]
+Info: Opus initialized: 48 kHz, 8 channels, 2048 kbps (total), LOWDELAY
+```
+
+**8 channels / 2048 kbps is the 7.1 path** — 4x the bitrate of stereo (`2 channels, 512 kbps`),
+and the client must decode 8-channel Opus and **downmix it** to whatever it actually outputs.
+On handhelds and phones that decode+downmix is a common source of dropouts.
+
+The **client** chooses this, not the host — Apollo just selects a matching virtual sink, so the
+host's audio settings can be entirely at defaults and you'll still get 7.1. Fix it on the client:
+
+- **Artemis / Moonlight → Settings → Audio configuration → Stereo**, then reconnect.
+
+Confirm from the host log that the next session reports `2 channels, 512 kbps`. Unless you are
+genuinely outputting to a 5.1/7.1 receiver, stereo is the better choice — downmixed surround
+sounds no better than stereo on handheld speakers or headphones.
+
+If stereo alone doesn't fix it:
+
+1. **Lower the video bitrate.** Audio and video share one connection; a very high request (the
+   client asks for it — check `Client Requested bitrate is [...]` in the host log) can starve
+   audio packets on a Wi-Fi client. Try ~60-80 Mbps.
+2. **Thin out host virtual-audio drivers.** Stacked virtual mixers (SteelSeries Sonar, Sonic
+   Studio, Nahimic, etc.) sit in the capture path and are a frequent cause of crackle/dropouts.
+   Disable them and set a plain physical device as the default output.
+3. **Check the link.** Capture a session and look at the RSSI/roam timeline and an iperf3 run —
+   loss > 5% or jitter > 1 ms will break audio before it visibly breaks video.
 
 ## Workflow
 1. Reproduce with verbose logging on (see [log-paths.md](./log-paths.md)).
