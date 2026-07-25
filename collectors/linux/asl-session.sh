@@ -4,21 +4,24 @@
 #
 # All flags are passed straight through to `python -m asl_collector` (see --help).
 #
-# Example (Moonlight client, create the session, sample link every 15s until Enter):
-#   ./asl-session.sh --hub-url https://apollo-streaming-lab.<tailnet>.ts.net --create \
-#       --name "couch LAN HEVC" --host DOMINO --client couch --network-path local-LAN \
-#       --source client --role moonlight --interval 15 \
-#       --log "$HOME/.var/app/com.moonlight_stream.Moonlight/config/Moonlight Game Streaming Project/Moonlight.conf"
+# The log path is auto-detected from --source/--role (see asl_collector/logfind.py); pass --log
+# only to override or when your install puts it somewhere unusual.
 #
-# Example (Moonlight client, zero copy-paste: attach to the newest session the host created):
-#   ./asl-session.sh --hub-url https://apollo-streaming-lab.<tailnet>.ts.net \
-#       --source client --role moonlight --attach-latest --interval 15 \
-#       --log "$HOME/.var/app/com.moonlight_stream.Moonlight/config/Moonlight Game Streaming Project/Moonlight.conf"
+# Recommended (client dictates the session; a host running --watch joins it automatically):
+#   ./asl-session.sh --hub-url http://192.168.69.159:8080 --source client --role moonlight \
+#       --create --name "couch LAN AV1" --interval 15
+#
+# Attach instead to a session the host already created (no id to copy):
+#   ./asl-session.sh --hub-url http://192.168.69.159:8080 \
+#       --source client --role moonlight --attach-latest --interval 15
+#
+# On a Linux Apollo host, run it long-lived and let clients dictate sessions:
+#   ./asl-session.sh --hub-url http://192.168.69.159:8080 --source host --watch
 #
 # Moonlight-Qt log locations vary by install:
 #   Flatpak : ~/.var/app/com.moonlight_stream.Moonlight/  (also `flatpak run` stderr)
 #   native  : ~/.config/Moonlight Game Streaming Project/
-# Pass the actual path(s) with one or more --log flags.
+# Pass the actual path(s) with one or more --log flags if auto-detection misses yours.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

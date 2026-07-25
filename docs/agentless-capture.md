@@ -4,6 +4,9 @@ Some clients can't run the Python collector, so their side of a session is captu
 through the hub's web UI. Open the hub in the device's browser (it's reachable on the tailnet or
 LAN) and use the session page's **Manual entry** panel.
 
+Since these clients can't create the session themselves, make it in the UI (**+ New session**).
+A host collector running in `-Watch` mode picks it up automatically within seconds.
+
 > Still run the **host collector** on the Apollo host for these sessions — it captures the Apollo
 > log and **auto-detects the client's IP + network path** from the live connection. Only the
 > client-side log/stats and the device's network details need manual entry.

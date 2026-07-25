@@ -82,22 +82,20 @@ python -m venv .venv
 
 While capturing, collectors **post logs + link samples every ~30s** (`--post-interval`), so the
 session page updates **live** (both the session page and the sessions list auto-refresh until the
-session is stopped). The host collector fills blank session metadata (codec/res/fps/HDR, client IP
-+ network path) **live during** the capture too. For a live **client** log, launch Artemis/Moonlight
-via the collector (`-Launch`) so it captures the app's real-time stderr — its `%TEMP%` log file is
-buffered and only flushes in bursts.
+session is stopped). The **host** collector also fills blank session metadata **live during** the
+capture (codec/resolution/fps/bitrate/HDR from the log; client IP + network path from the live
+connection) and never overrides values you set yourself. For a live **client** log, launch
+Artemis/Moonlight via the collector (`-Launch`) so it captures the app's real-time stderr — its
+`%TEMP%` log file is buffered and only flushes in bursts.
 
-The **host** collector auto-fills blank session fields **live during the capture** (codec/
-resolution/fps/bitrate/HDR from the log; client IP + network path from the live connection) and
-never overrides values you set yourself. Full walkthrough (local vs remote WireGuard):
-[docs/host-client-setup.md](./docs/host-client-setup.md).
+Full walkthrough (local vs remote WireGuard): [docs/host-client-setup.md](./docs/host-client-setup.md).
 
 ## Documentation
 All docs live in [`docs/`](./docs/):
 - **[Host & client setup](./docs/host-client-setup.md)** — wire up host + hub + clients; per-test capture (local & remote).
-- **[Deploying the hub](./docs/deploy.md)** — LAN/WireGuard vs tailnet-only, and `.env` config.
+- **[Deploying the hub](./docs/deploy.md)** — LAN/WireGuard, tailnet-only, or directly on a host; plus `.env` config.
 - **[Agent-less capture (Android & Xbox)](./docs/agentless-capture.md)** — manual capture via the hub UI.
-- **[Copilot analysis](./docs/copilot-analysis.md)** — the `mock`/`cli`/`sdk` backends and their config.
+- **[Copilot analysis](./docs/copilot-analysis.md)** — the `mock`/`cli`/`sdk` backends and what the offline analyzer detects.
 - **[Log paths](./docs/log-paths.md)** · **[Scenario matrix](./docs/scenario-matrix.md)** · **[Troubleshooting](./docs/troubleshooting.md)**
 
 ## Testing

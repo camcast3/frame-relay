@@ -44,7 +44,8 @@ Three cooperating parts:
   `config.py` centralizes all runtime config.
 - **`collectors/asl_collector/`** — the capture agent (a `python -m asl_collector` CLI, plus
   `collectors/windows/*.ps1` and `collectors/linux/*.sh` wrappers). Runs on the machines under
-  test, POSTs logs/link samples/net tests to the hub API.
+  test, POSTs logs/link samples/net tests to the hub API. The **host** normally runs long-lived
+  in `--watch` mode and the **client dictates the session** (`--create`); the host follows.
 - **`network/`** — iperf3 runner + parser and per-network-path scenario presets.
 
 Data flow: collectors → hub API (`/api/sessions/...`) → SQLite → UI renders logs side-by-side +
@@ -52,8 +53,9 @@ an RSSI/roam chart → Copilot analysis on demand. The **session** is the centra
 everything together (`sessions` table + `log_chunks`, `link_samples`, `net_tests`, `artifacts`,
 `chat_messages`, all `ON DELETE CASCADE`).
 
-Deployment: the hub is tailnet-only behind a Tailscale **sidecar** (`network_mode:
-service:tailscale`, published via `tailscale serve`) or LAN/WireGuard-reachable on port 8080.
+Deployment: the hub runs LAN/WireGuard-reachable on port 8080, tailnet-only behind a Tailscale
+**sidecar** (`network_mode: service:tailscale`, published via `tailscale serve`), or directly on
+a host with `python -m hub`.
 
 ## Conventions
 
@@ -75,9 +77,12 @@ service:tailscale`, published via `tailscale serve`) or LAN/WireGuard-reachable 
   columns (`encoder_settings`, `meta`) are stored as TEXT and (de)serialized in `row_to_dict`.
 - **Network path taxonomy** is a fixed `Literal`: `local-LAN` / `remote-WireGuard` /
   `remote-Tailscale` / `remote-WAN`, derived from the client IP range. Reuse these values.
-- The **host collector auto-fills blank session fields on stop** (codec/resolution/fps/bitrate/
-  HDR from the log; client IP + network path from the live connection) and **never overrides**
-  values already set in the UI/CLI.
+- The **host collector fills blank session fields live during capture** (codec/resolution/fps/
+  bitrate/HDR from the log; client IP + network path from the live connection) and **never
+  overrides** values already set in the UI/CLI.
+- **"Awaiting a host/client" means that side has posted no log chunk yet** — never that the
+  `host`/`client` *name* field is blank, since the host collector fills the client name in while
+  it runs. `--attach-latest` (client) and `--watch` (host) both depend on this.
 - Every module starts with `from __future__ import annotations`.
 - Data lives under `data/` and secrets in `.env` — both gitignored; never commit either.
 

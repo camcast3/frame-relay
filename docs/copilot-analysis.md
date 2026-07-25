@@ -17,13 +17,32 @@ backends selected by `ASL_COPILOT_BACKEND`. All three receive the *same* structu
 `cli` and `sdk` **fall back to `mock`** on any error (missing token, CLI not found, import
 failure, non-zero exit), appending a short note about what failed — so the feature never breaks.
 
-## The `mock` analyzer's rules
-Even offline it flags the common Apollo/Sunshine failure modes from the session data:
+## What the offline (`mock`) analyzer detects
+Even with no token it flags the common Apollo/Sunshine failure modes from the session data.
+
+**Network / link**
 - **iperf3 packet loss > 5%** or **jitter > 1 ms** on a net test.
 - **Wi-Fi roam** — more than one client BSSID during the session (a mid-stream AP change).
 - **Weak Wi-Fi** — client RSSI below −70 dBm.
 - **NIC-speed mismatch** — host Ethernet faster than the client's (buffer-overrun packet loss).
-- **Log errors** — error/disconnect/timeout/codec/HDR/decoder keywords in either log tail.
+
+**From the client's own performance summary** (Moonlight/Artemis measures the path end-to-end,
+so this is more reliable than inferring from the host)
+- **Network frame drops > 1%** — the path is losing packets.
+- **Loss vs congestion** — low latency + low variance + ~no jitter drops means packet *loss*,
+  so the advice is to lower the bitrate rather than chase latency.
+- **Consecutive drop limit** — a burst was lost outright, forcing an IDR/key-frame request.
+
+**Audio**
+- **Out-of-sequence audio**, split by timing: events within 15s of an audio (re)init are the
+  normal startup resync and are reported as benign; **mid-stream** events mean real audio loss.
+- **Surround Opus** — the client asked for 5.1/7.1 and must decode and downmix it.
+
+**Logs**
+- Error/disconnect/timeout/codec/HDR/decoder keywords in either log tail, with **known-benign
+  lines filtered out** (Apollo's encoder probe deliberately provokes failures, Artemis probes
+  command endpoints Apollo doesn't implement, and request URLs match on `hdrMode=`). Without
+  that filter the real finding gets buried.
 
 It then prints a prioritized "likely focus" conclusion.
 

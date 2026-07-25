@@ -119,9 +119,10 @@ log + enter Wi-Fi/AP details). See [agentless-capture.md](./agentless-capture.md
 
 Stream for a few minutes — the collectors **post logs + link samples to the hub every ~30s**, so
 the session page updates **live** while you watch (it auto-refreshes until the session is
-stopped). Then press **Enter** in each collector window for a final flush. Add `-StopSession` /
-`--stop-session` to auto-mark the session stopped, or tune the cadence with
-`-PostIntervalSeconds` / `--post-interval` (`0` = post only on stop).
+stopped). Then stop the **client** capture (press **Enter**, or close the app when you used
+`-Launch`) for a final flush. A host in `-Watch` mode needs no attention: it finishes the session
+when you stop it in the UI (or with `-StopSession` on the client) and then waits for the next
+one. Tune the cadence with `-PostIntervalSeconds` / `--post-interval` (`0` = post only on stop).
 
 ---
 
@@ -136,8 +137,7 @@ Same as local, with three differences:
    client is classified **`remote-WireGuard`** automatically. Override only if your WG VLAN
    differs:
    ```powershell
-   collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Create -Name "remote WG HEVC" -Source host `
-       -WgSubnet 192.168.2.0/24
+   collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source host -Watch -WgSubnet 192.168.2.0/24
    ```
 
 **iperf3 over the tunnel** (port 5201; open it to the WG VLAN on the host):

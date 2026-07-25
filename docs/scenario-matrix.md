@@ -13,13 +13,15 @@ Create one hub session per row; the presets live in `network/scenarios.py`.
 | 6 | remote-WAN        | any              | HEVC  | 1080p/60  | 25      | off |          |        |            |
 
 For each row:
-1. On the client, note the AP you're on (the collector records SSID/BSSID automatically).
-2. Start the collector on the **host** (`-Create`), then on each **client** — clients attach to
-   the host's session automatically (`-AttachLatest`), no session id to copy (see repo README).
+1. On the client, note the AP you're on (the collector records SSID/BSSID automatically — on
+   Windows clients the BSSID needs Location Services on, see [log-paths.md](./log-paths.md)).
+2. Leave the **host** collector running in `-Watch` mode, then start the **client** with
+   `-Create`; the host joins the session the client created within seconds (see
+   [host-client-setup.md](./host-client-setup.md)).
 3. Run an iperf3 test (`network/iperf_runner.py`).
 4. Stream for a few minutes; try to trigger the limitation (movement, load, roaming). Logs +
    link samples post live (~30s), so the session page fills in while you watch.
-5. Stop the collectors, add your **notes**, set the **outcome**, then click **Analyze**.
+5. Stop the client, add your **notes**, set the **outcome**, then click **Analyze**.
 
 ## What each path stresses
 - **local-LAN:** encoder/decoder latency, Wi-Fi quality, NIC-speed mismatch (buffer overrun).
