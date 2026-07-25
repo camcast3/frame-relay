@@ -2,15 +2,15 @@
 {% set s = b.session %}
 {% block title %}{{ s.name or s.id }} · Apollo Streaming Lab{% endblock %}
 {% block content %}
-<div id="session" data-id="{{ s.id }}">
+<div id="session" data-id="{{ s.id }}" data-status="{{ s.status }}">
   <div class="crumb"><a href="/">← Sessions</a></div>
-  <h1>{{ s.name or s.id }} <span class="pill status-{{ s.status }}">{{ s.status }}</span></h1>
+  <h1>{{ s.name or s.id }} <span id="status-pill" class="pill status-{{ s.status }}">{{ s.status }}</span></h1>
   <p class="muted mono">{{ s.id }}</p>
 
   <section class="card">
     <div class="meta-grid">
-      <div><span class="k">Path</span>{{ s.network_path or "—" }}</div>
-      <div><span class="k">Host → Client</span>{{ s.host or "?" }} → {{ s.client or "?" }}</div>
+      <div><span class="k">Path</span><span id="meta-path">{{ s.network_path or "—" }}</span></div>
+      <div><span class="k">Host → Client</span><span id="meta-hostclient">{{ s.host or "?" }} → {{ s.client or "?" }}</span></div>
       <div><span class="k">Codec</span>{{ s.codec or "—" }}{% if s.hdr %} · HDR{% endif %}</div>
       <div><span class="k">Video</span>{{ s.resolution or "—" }} @ {{ s.fps or "—" }}fps · {{ s.bitrate_mbps or "—" }} Mbps</div>
       <div><span class="k">Started</span><span class="mono">{{ (s.started_at or "")[:19] }}</span></div>
@@ -59,7 +59,7 @@
       <table class="grid small">
         <thead><tr><th>Time</th><th>Src</th><th>Type</th><th>SSID</th><th>BSSID (AP)</th>
           <th>Band/Ch</th><th>RSSI</th><th>Rate</th></tr></thead>
-        <tbody>
+        <tbody id="link-tbody">
         {% for l in b.link_samples %}
           <tr><td class="mono">{{ (l.sampled_at or "")[11:19] }}</td><td>{{ l.source }}</td>
             <td>{{ l.link_type or "—" }}</td><td>{{ l.ssid or "—" }}</td>

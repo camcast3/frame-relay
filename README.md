@@ -74,6 +74,9 @@ python -m venv .venv
 3. Optionally run an iperf3 test (`network/iperf_runner.py`).
 4. Stop the collectors, add **notes**, set the **outcome**, then click **Analyze**.
 
+While capturing, collectors **post logs + link samples every ~30s** (`--post-interval`), so the
+session page updates **live** (it auto-refreshes until the session is stopped).
+
 The **host** collector auto-fills blank session fields on stop (codec/resolution/fps/bitrate/HDR
 from the log; client IP + network path from the live connection) and never overrides values you
 set yourself. Full walkthrough (local vs remote WireGuard): [docs/host-client-setup.md](./docs/host-client-setup.md).

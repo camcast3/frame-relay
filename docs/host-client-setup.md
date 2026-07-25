@@ -84,8 +84,11 @@ log + enter Wi-Fi/AP details). See [agentless-capture.md](./agentless-capture.md
 (role `moonlight`); the host collector still auto-detects the Xbox's IP + network path. See
 [agentless-capture.md](./agentless-capture.md).
 
-Stream for a few minutes, then press **Enter** in each collector window. Add `-StopSession` /
-`--stop-session` if you want the session auto-marked stopped.
+Stream for a few minutes — the collectors **post logs + link samples to the hub every ~30s**, so
+the session page updates **live** while you watch (it auto-refreshes until the session is
+stopped). Then press **Enter** in each collector window for a final flush. Add `-StopSession` /
+`--stop-session` to auto-mark the session stopped, or tune the cadence with
+`-PostIntervalSeconds` / `--post-interval` (`0` = post only on stop).
 
 ---
 

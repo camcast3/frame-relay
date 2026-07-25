@@ -18,6 +18,7 @@ import argparse
 import glob
 import platform
 import sys
+import threading
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -147,7 +148,11 @@ def run(args: argparse.Namespace) -> str:
 
     logs = _expand(args.log)
     start = _now()
-    offsets = {path: logslice.file_offset(path) for path in logs}
+    posted_offsets = {path: logslice.file_offset(path) for path in logs}
+    posted_any = {path: False for path in logs}
+    host_log_parts: list[str] = []
+    posted_link_idx = 0
+    flush_lock = threading.Lock()
 
     monitor = None
     conn_monitor = None
@@ -158,8 +163,49 @@ def run(args: argparse.Namespace) -> str:
             conn_monitor = conninfo.ClientMonitor(conninfo.apollo_ports(args.apollo_port), args.interval)
             conn_monitor.start()
 
+    def flush(final: bool = False) -> None:
+        """Post any log bytes / link samples not sent yet. Safe to call repeatedly."""
+        nonlocal posted_link_idx
+        with flush_lock:
+            for path in logs:
+                text, new_off = logslice.read_new(path, posted_offsets.get(path, 0))
+                posted_offsets[path] = new_off
+                if not text.strip() and final and not posted_any[path]:
+                    # Nothing appended during the window (e.g. a static/complete log): fall back
+                    # to a wall-clock slice of timestamped lines.
+                    text = logslice.slice_file(path, start, _now())
+                    if not text.strip():
+                        continue
+                elif not text.strip():
+                    continue
+                client.post_log(hub, sid, args.source, role, text, machine)
+                posted_any[path] = True
+                print(f"posted {len(text.splitlines())} log lines from {path}")
+                if args.source == "host":
+                    host_log_parts.append(text)
+            if monitor:
+                pending = monitor.samples[posted_link_idx:]
+                if pending:
+                    added = client.post_links(hub, sid, list(pending))
+                    posted_link_idx += len(pending)
+                    aps = {s.get("bssid") for s in pending if s.get("bssid")}
+                    print(f"posted {added} link samples ({len(aps)} distinct AP(s))")
+
+    stop_evt = threading.Event()
+    flusher = None
+    if args.post_interval and args.post_interval > 0:
+        def _flush_loop() -> None:
+            while not stop_evt.wait(args.post_interval):
+                try:
+                    flush(final=False)
+                except Exception as e:  # keep capturing even if the hub blips
+                    print(f"live post failed (will retry): {e}")
+        flusher = threading.Thread(target=_flush_loop, daemon=True)
+        flusher.start()
+
+    live = "live-posting every %ss" % args.post_interval if flusher else "posting on stop"
     print(f"capturing session {sid} ({args.source}/{role}) on {machine} - "
-          f"{'sampling link every %ss' % args.interval if monitor else 'no link sampling'}")
+          f"{'sampling link every %ss' % args.interval if monitor else 'no link sampling'}; {live}")
     try:
         if args.duration and args.duration > 0:
             import time
@@ -169,27 +215,17 @@ def run(args: argparse.Namespace) -> str:
     except KeyboardInterrupt:
         pass
 
-    stop = _now()
-    samples = monitor.stop() if monitor else []
+    stop_evt.set()
+    if flusher:
+        flusher.join(timeout=(args.post_interval or 0) + 5)
+    if monitor:
+        monitor.stop()
     client_ip = conn_monitor.stop() if conn_monitor else None
     if client_ip:
         print(f"detected client {client_ip} -> {conninfo.classify_network_path(client_ip, args.wg_subnet)}")
 
-    host_log_text = ""
-    for path in logs:
-        content = logslice.read_since(path, offsets.get(path, 0))
-        if not content.strip():
-            content = logslice.slice_file(path, start, stop)
-        if content.strip():
-            client.post_log(hub, sid, args.source, role, content, machine)
-            print(f"posted {len(content.splitlines())} log lines from {path}")
-            if args.source == "host":
-                host_log_text += content + "\n"
-
-    if samples:
-        added = client.post_links(hub, sid, samples)
-        aps = {s.get("bssid") for s in samples if s.get("bssid")}
-        print(f"posted {added} link samples ({len(aps)} distinct AP(s))")
+    flush(final=True)
+    host_log_text = "\n".join(host_log_parts)
 
     if args.source == "host" and (host_log_text.strip() or client_ip):
         _enrich_host(hub, sid, host_log_text, client_ip, args)
@@ -219,6 +255,9 @@ def build_parser() -> argparse.ArgumentParser:
                    "omit to auto-detect from --source/--role (see logfind.py)")
     p.add_argument("--machine", help="reporting machine name (default: hostname)")
     p.add_argument("--interval", type=float, default=15.0, help="link sample interval seconds (0=off)")
+    p.add_argument("--post-interval", type=float, default=30.0, dest="post_interval",
+                   help="push logs + link samples to the hub every N seconds during capture so "
+                        "the UI updates live (0=only post once when the capture stops)")
     p.add_argument("--duration", type=int, default=0, help="capture seconds (0=until Enter)")
     p.add_argument("--stop-session", action="store_true", help="mark the session stopped on the hub")
     p.add_argument("--apollo-port", type=int, default=47989,

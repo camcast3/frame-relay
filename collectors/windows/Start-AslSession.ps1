@@ -32,6 +32,7 @@ param(
   [string[]]$LogPath,
   [string]$Machine,
   [double]$IntervalSeconds = 15,
+  [double]$PostIntervalSeconds = 30,
   [int]$DurationSeconds = 0,
   [switch]$StopSession,
   # metadata used only with -Create
@@ -61,7 +62,8 @@ $env:PYTHONPATH = $collectorsDir
 # auto-detects from -Source/-Role on every platform. Pass -LogPath to override.
 
 $asl = @('-m', 'asl_collector', '--hub-url', $HubUrl, '--source', $Source,
-         '--interval', $IntervalSeconds, '--duration', $DurationSeconds)
+         '--interval', $IntervalSeconds, '--post-interval', $PostIntervalSeconds,
+         '--duration', $DurationSeconds)
 if ($SessionId)   { $asl += @('--session-id', $SessionId) }
 if ($AttachLatest){ $asl += '--attach-latest' }
 if ($Create)      { $asl += '--create' }

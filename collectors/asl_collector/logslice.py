@@ -31,14 +31,25 @@ def file_offset(path: str) -> int:
 
 def read_since(path: str, offset: int) -> str:
     """Read bytes appended after ``offset``. If the file shrank (rotated), read it all."""
+    return read_new(path, offset)[0]
+
+
+def read_new(path: str, offset: int) -> tuple[str, int]:
+    """Read text appended after ``offset`` and report the new offset.
+
+    Returns ``(text, next_offset)`` where ``next_offset`` is where the next incremental read
+    should resume (so callers can post logs live in chunks without duplicating or skipping
+    lines). If the file shrank (rotated), it is read from the start.
+    """
     try:
         size = os.path.getsize(path)
     except OSError:
-        return ""
+        return "", offset
     start = offset if offset <= size else 0
     with open(path, "r", encoding="utf-8", errors="replace") as fh:
         fh.seek(start)
-        return fh.read()
+        text = fh.read()
+        return text, fh.tell()
 
 
 def extract_timestamp(line: str) -> Optional[datetime]:

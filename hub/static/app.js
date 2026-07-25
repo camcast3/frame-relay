@@ -142,6 +142,66 @@ const ASL = (() => {
     document.body.appendChild(d); setTimeout(() => d.remove(), 1800);
   }
 
+  // --- live refresh while a capture is still running ---------------------------
+  function renderLinkRows(samples) {
+    const tb = document.getElementById("link-tbody"); if (!tb) return;
+    tb.innerHTML = "";
+    if (!samples.length) {
+      const tr = document.createElement("tr"), td = document.createElement("td");
+      td.colSpan = 8; td.className = "muted"; td.textContent = "No link samples.";
+      tr.appendChild(td); tb.appendChild(tr); return;
+    }
+    for (const l of samples) {
+      const tr = document.createElement("tr");
+      const band = (l.band || "") + (l.channel ? "/" + l.channel : "");
+      const rssi = l.rssi != null ? l.rssi : (l.signal_pct != null ? l.signal_pct + "%" : "—");
+      const cells = [
+        [(l.sampled_at || "").substring(11, 19), "mono"], [l.source || "—", ""],
+        [l.link_type || "—", ""], [l.ssid || "—", ""], [l.bssid || "—", "mono bssid"],
+        [band || "—", ""], [rssi, ""], [l.link_speed || "—", ""],
+      ];
+      for (const [txt, cls] of cells) {
+        const td = document.createElement("td"); if (cls) td.className = cls;
+        td.textContent = txt; tr.appendChild(td);
+      }
+      tb.appendChild(tr);
+    }
+  }
+
+  function updateLogPane(id, chunks) {
+    const pre = document.getElementById(id); if (!pre) return;
+    const content = chunks.map(c => c.content).join("\n");
+    if (pre.dataset.raw === content) return;
+    const atBottom = pre.scrollHeight - pre.scrollTop - pre.clientHeight < 40;
+    pre.dataset.raw = content;
+    applyLogFilter();
+    if (atBottom) pre.scrollTop = pre.scrollHeight;
+  }
+
+  async function refreshOnce() {
+    let b;
+    try { b = await api("GET", `/api/sessions/${sid()}`); } catch (e) { return true; }
+    updateLogPane("host-log", b.host_logs || []);
+    updateLogPane("client-log", b.client_logs || []);
+    renderLinkRows(b.link_samples || []);
+    const raw = document.getElementById("bundle-data");
+    if (raw) { raw.textContent = JSON.stringify(b.link_samples || []); drawRssiChart(); }
+    const s = b.session || {};
+    const path = document.getElementById("meta-path"); if (path) path.textContent = s.network_path || "—";
+    const hc = document.getElementById("meta-hostclient"); if (hc) hc.textContent = `${s.host || "?"} → ${s.client || "?"}`;
+    const pill = document.getElementById("status-pill");
+    if (pill && s.status) { pill.textContent = s.status; pill.className = "pill status-" + s.status; }
+    return s.status === "active";
+  }
+
+  function startLiveRefresh() {
+    const el = document.getElementById("session");
+    if (!el || el.dataset.status !== "active") return;
+    const timer = setInterval(async () => {
+      if (!(await refreshOnce())) clearInterval(timer);
+    }, 8000);
+  }
+
   function wirePasteLog() {
     const f = document.getElementById("paste-log-form"); if (!f) return;
     f.addEventListener("submit", async (e) => {
@@ -171,7 +231,7 @@ const ASL = (() => {
 
   function initSessionPage() {
     applyLogFilter(); wireSyncScroll(); wireChat(); wireArtifactUpload();
-    wirePasteLog(); wireManualLink(); drawRssiChart();
+    wirePasteLog(); wireManualLink(); drawRssiChart(); startLiveRefresh();
   }
 
   return { wireNewSessionForm, initSessionPage, saveOutcome, saveNotes, stopSession,

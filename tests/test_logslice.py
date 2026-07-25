@@ -47,6 +47,33 @@ def test_read_since_handles_rotation(tmp_path):
     assert logslice.read_since(str(p), off) == "x\n"
 
 
+def test_read_new_incremental_offsets(tmp_path):
+    p = tmp_path / "app.log"
+    p.write_text("first\n")
+    off = logslice.file_offset(str(p))
+    with open(p, "a", encoding="utf-8") as fh:
+        fh.write("second\n")
+    text, off2 = logslice.read_new(str(p), off)
+    assert text == "second\n" and off2 > off
+    # A second read from the reported offset returns only newly appended lines (no dupes).
+    with open(p, "a", encoding="utf-8") as fh:
+        fh.write("third\n")
+    text2, off3 = logslice.read_new(str(p), off2)
+    assert text2 == "third\n" and off3 > off2
+    # Nothing new -> empty, offset unchanged.
+    text3, off4 = logslice.read_new(str(p), off3)
+    assert text3 == "" and off4 == off3
+
+
+def test_read_new_handles_rotation(tmp_path):
+    p = tmp_path / "app.log"
+    p.write_text("a\nb\nc\n")
+    off = logslice.file_offset(str(p))
+    p.write_text("x\n")  # shrank -> read from start
+    text, _ = logslice.read_new(str(p), off)
+    assert text == "x\n"
+
+
 def test_slice_file_tail_fallback(tmp_path):
     p = tmp_path / "notimestamps.log"
     p.write_text("\n".join(f"line{i}" for i in range(5000)))
