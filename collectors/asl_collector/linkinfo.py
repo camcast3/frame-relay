@@ -36,6 +36,22 @@ def freq_to_band_channel(mhz: int) -> tuple[str, Optional[int]]:
     return "?", None
 
 
+def netsh_bssid_blocked(text: str) -> bool:
+    """True when Windows withheld the BSSID because Location Services are off.
+
+    Windows 11 24H2+ treats a BSSID as location data, so `netsh wlan show interfaces`
+    omits it (and prints a permission notice) unless Location Services are enabled. SSID,
+    band, channel and signal still come through, so the only thing lost is **roam
+    detection** - which needs the BSSID to tell one AP from another.
+    """
+    low = text.lower()
+    if "location" not in low:
+        return False
+    return ("location permission" in low
+            or "location services" in low
+            or "privacy & security" in low)
+
+
 def parse_netsh_wlan(text: str) -> dict[str, Any]:
     """Parse `netsh wlan show interfaces` (Windows)."""
     kv: dict[str, str] = {}
@@ -147,11 +163,25 @@ def _run(cmd: list[str]) -> Optional[str]:
         return None
 
 
+_warned_bssid_blocked = False
+
+
 def _detect_windows() -> dict[str, Any]:
+    global _warned_bssid_blocked
     out = _run(["netsh", "wlan", "show", "interfaces"])
     if out:
         sample = parse_netsh_wlan(out)
         if sample:
+            if (sample.get("link_type") == "wifi" and not sample.get("bssid")
+                    and not _warned_bssid_blocked):
+                _warned_bssid_blocked = True
+                if netsh_bssid_blocked(out):
+                    print("note: Windows withheld the Wi-Fi BSSID because Location Services "
+                          "are off, so AP-roam detection is disabled for this machine. "
+                          "Enable Settings > Privacy & security > Location to capture it.")
+                else:
+                    print("note: no BSSID reported for this Wi-Fi link, so AP-roam detection "
+                          "is disabled for this machine.")
             return sample
     ps = _run(["powershell", "-NoProfile", "-Command",
                "Get-NetAdapter -Physical | Where-Object Status -eq 'Up' | "

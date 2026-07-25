@@ -6,6 +6,7 @@ troubleshooting docs.
 | Symptom | Likely cause | What to check in the session |
 |---------|--------------|------------------------------|
 | Stutter only on Wi-Fi | Weak RSSI or **AP roam** mid-stream | RSSI/roam timeline (red line = BSSID change); switch to Ethernet or lock the AP/band |
+| RSSI charted but **no roam detection** on a Windows client | Windows 11 24H2+ withholds the BSSID unless Location Services are on | Link samples show a blank `bssid`; enable **Settings → Privacy & security → Location** on the client — see [log-paths.md](./log-paths.md) |
 | Heavy packet loss, host much faster than client | **Buffer overrun** (e.g. 2.5 GbE host → 1 GbE/Wi-Fi client) | Link samples show the NIC-speed mismatch; cap host NIC or lower bitrate; Apollo > 0.23.1 helps |
 | Loss/jitter on a specific path | Network path quality | iperf3 panel (loss > 5% / jitter > 1 ms is bad); lower bitrate ~15%, compare wired |
 | 30–60% loss on one client only | **MTU** mismatch | Try a lower host MTU (e.g. 1428) for that guest |

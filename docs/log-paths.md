@@ -66,6 +66,11 @@ Captured automatically by the collectors (see `collectors/asl_collector/linkinfo
 - **Linux:** `iw dev <dev> link` (BSSID/freq/signal dBm/bitrate), `nmcli` (fallback),
   `ethtool <dev>` (wired speed).
 - **BSSID = the specific access point.** A BSSID change between samples = a Wi-Fi roam.
+- **Windows 11 24H2+ hides the BSSID unless Location Services are on.** Windows treats a
+  BSSID as location data, so `netsh wlan show interfaces` omits it and prints a permission
+  notice. SSID/band/channel/signal still work — the only thing lost is **roam detection**.
+  Enable **Settings → Privacy & security → Location** on the client to capture it; the
+  collector prints a one-time note when it detects this.
 - Android: entered manually (agent-less).
 
 ## Network test

@@ -16,6 +16,28 @@ def test_parse_netsh_wlan():
     assert d["link_speed"] == "1201 Mbps"
 
 
+def test_parse_netsh_wlan_without_bssid():
+    """Windows 11 24H2+ withholds the BSSID unless Location Services are on.
+
+    Everything else must still parse - only roam detection is lost.
+    """
+    text = (SAMPLES / "netsh-wlan-no-bssid.txt").read_text()
+    d = linkinfo.parse_netsh_wlan(text)
+    assert d["link_type"] == "wifi"
+    assert d["ssid"] == "BananaStandMoney"
+    assert d["bssid"] is None
+    assert d["band"] == "5 GHz"
+    assert d["channel"] == "100"
+    assert d["signal_pct"] == 96
+    assert d["rssi"] == -52          # 96/2 - 100
+    assert d["link_speed"] == "2882.4 Mbps"
+    assert linkinfo.netsh_bssid_blocked(text) is True
+
+
+def test_netsh_bssid_blocked_false_when_bssid_present():
+    assert linkinfo.netsh_bssid_blocked((SAMPLES / "netsh-wlan.txt").read_text()) is False
+
+
 def test_parse_iw_link():
     d = linkinfo.parse_iw_link((SAMPLES / "iw-link.txt").read_text())
     assert d["bssid"] == "aa:bb:cc:11:22:44"
