@@ -49,8 +49,13 @@ def create_session(data: SessionCreate) -> dict[str, Any]:
 def list_sessions(awaiting_client: bool = False) -> list[dict[str, Any]]:
     q = "SELECT * FROM sessions"
     if awaiting_client:
-        # No client attached yet: the client metadata field is empty/null.
-        q += " WHERE client IS NULL OR TRIM(client) = ''"
+        # "Awaiting a client" means no client has actually attached yet - i.e. no client log
+        # chunks - rather than merely that the client *name* field is blank. The host collector
+        # fills that name in from the live connection while it is still running, so keying off
+        # it would hide the session from the client collector seconds after the host starts.
+        q += (" WHERE status != 'stopped'"
+              " AND NOT EXISTS (SELECT 1 FROM log_chunks lc"
+              " WHERE lc.session_id = sessions.id AND lc.source = 'client')")
     q += " ORDER BY created_at DESC"
     with db.db() as conn:
         rows = conn.execute(q).fetchall()

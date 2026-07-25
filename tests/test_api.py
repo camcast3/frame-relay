@@ -84,17 +84,31 @@ def test_patch_metadata(client):
 
 
 def test_awaiting_client_filter(client):
-    with_client = _create(client, name="joined")
+    """"Awaiting a client" keys off client *logs*, not the client name field.
+
+    The host collector fills the client name from the live connection while it runs, so a
+    session must stay attachable until a client collector actually posts something.
+    """
+    named = _create(client, name="named-but-unattached")          # client name set, no logs
     r = client.post("/api/sessions", json={"name": "open", "host": "DOMINO", "client": None})
-    no_client = r.json()
+    unnamed = r.json()                                            # no client name, no logs
+    attached = _create(client, name="already-attached")
+    client.post(f"/api/sessions/{attached['id']}/logs",
+                json={"source": "client", "role": "moonlight", "content": "hello"})
+    stopped = _create(client, name="finished")
+    client.post(f"/api/sessions/{stopped['id']}/stop")
 
     all_ids = {s["id"] for s in client.get("/api/sessions").json()}
-    assert with_client["id"] in all_ids and no_client["id"] in all_ids
+    assert {named["id"], unnamed["id"], attached["id"], stopped["id"]} <= all_ids
 
-    awaiting = client.get("/api/sessions", params={"awaiting_client": "true"}).json()
-    awaiting_ids = {s["id"] for s in awaiting}
-    assert no_client["id"] in awaiting_ids
-    assert with_client["id"] not in awaiting_ids
+    awaiting_ids = {s["id"] for s in
+                    client.get("/api/sessions", params={"awaiting_client": "true"}).json()}
+    # a pre-filled client name must NOT hide the session from the client collector
+    assert named["id"] in awaiting_ids
+    assert unnamed["id"] in awaiting_ids
+    # once a client has posted logs, or the session is stopped, it is no longer awaiting
+    assert attached["id"] not in awaiting_ids
+    assert stopped["id"] not in awaiting_ids
 
 
 def test_pages_render(client):
