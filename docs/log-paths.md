@@ -36,7 +36,7 @@ Both are Qt apps that write a **per-run** diagnostic log into `%TEMP%`:
 ## Artemis client (Android) — agent-less
 - In-app **Export/Share logs**, or `adb logcat -d -s Moonlight:* Artemis:* > artemis-log.txt`.
 - Paste into the session via the hub's **Manual entry** panel. See
-  [../collectors/android/README.md](../collectors/android/README.md).
+  [agentless-capture.md](./agentless-capture.md).
 
 ## Link / access-point detection
 Captured automatically by the collectors (see `collectors/asl_collector/linkinfo.py`):

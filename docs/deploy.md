@@ -1,0 +1,116 @@
+# Deploying the hub
+
+The hub is a small FastAPI + SQLite app. There are three supported deployments — pick the one
+that matches how your devices reach it. For the day-to-day capture workflow that sits on top of a
+running hub, see [host-client-setup.md](./host-client-setup.md).
+
+| Option | Command | Reachable at | When to use |
+|--------|---------|--------------|-------------|
+| **LAN / WireGuard** (recommended) | `docker compose -f docker-compose.lan.yaml up -d --build` | `http://<watchtower-ip>:8080` | Devices are on your LAN or reach it over your UniFi **WireGuard** tunnel. |
+| **Tailnet-only** | `docker compose up -d --build` | `https://apollo-streaming-lab.<tailnet>.ts.net` | You'd rather not expose a LAN port; collectors reach the hub over Tailscale. |
+| **Direct on the host** (no Docker) | `python -m hub` | `http://<host-ip>:8080` | Run it on the Windows/Linux machine you already use — no Docker. Bind to all interfaces + open the firewall to reach it from other devices. |
+
+The Docker options read Copilot settings from `.env` (copy `.env.example` first) and persist data
+in the `hub-data` volume (`/data` in the container → the SQLite DB + uploaded artifacts).
+
+---
+
+## Option A — LAN / WireGuard (recommended)
+
+Publishes port `8080` on the Docker host. Local devices hit the LAN IP directly; remote devices
+reach the *same* IP over their WireGuard tunnel (UniFi routes the WG VLAN `192.168.2.0/24` to it).
+Access control is your firewall's job — this option has no built-in gate.
+
+```powershell
+# on the watchtower Docker host
+copy .env.example .env    # set ASL_COPILOT_* if you want real Copilot analysis
+docker compose -f docker-compose.lan.yaml up -d --build
+docker compose -f docker-compose.lan.yaml ps
+```
+
+Then open `http://<watchtower-ip>:8080`. Allow the WG VLAN → `hub:8080` in your firewall so
+remote clients can reach it. `TS_AUTHKEY` is **not** needed for this option.
+
+---
+
+## Option B — Tailnet-only (Tailscale sidecar)
+
+The hub runs with `network_mode: service:tailscale` and is published to the tailnet by
+`tailscale serve` on `:443` — it has **no LAN ports**. Nothing bridges the gaming VLAN ↔ DMZ.
+
+1. Copy `.env.example` to `.env`.
+2. Set `TS_AUTHKEY` from the Tailscale admin console; prefer an auth key tagged `tag:apollo-hub`.
+3. Optionally set `ASL_COPILOT_TOKEN` and `ASL_COPILOT_BACKEND=cli` or `sdk`
+   (see [copilot-analysis.md](./copilot-analysis.md)).
+4. Apply [`../deploy/tailscale-acl.snippet.hujson`](../deploy/tailscale-acl.snippet.hujson) in the
+   Tailscale admin console (defines `tag:apollo-hub` / `tag:apollo-collector` and who may reach
+   the hub on `tcp:443`).
+5. Start on the watchtower Docker host:
+
+   ```powershell
+   docker compose up -d --build
+   docker compose ps
+   ```
+
+6. Open `https://apollo-streaming-lab.<tailnet>.ts.net` from a tailnet device.
+7. Confirm the hub is **not** reachable at `http://<LAN-IP>:8080` — this compose file publishes
+   no LAN ports.
+
+The proxy mapping (`:443` → `127.0.0.1:8080`, funnel disabled) lives in
+[`../deploy/serve.json`](../deploy/serve.json).
+
+---
+
+## Option C — Run directly on the host (no Docker)
+
+Handy when you want the hub on the machine you already use (e.g. the Apollo host) without Docker.
+`python -m hub` binds `ASL_HOST`/`ASL_PORT` (**`0.0.0.0:8080`** by default), so it listens on all
+interfaces and is reachable from other devices right away:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m hub          # serves http://<host-ip>:8080 on all interfaces
+```
+
+A **bare `uvicorn hub.main:app` binds `127.0.0.1` only** (localhost) — that's why it isn't
+reachable from other devices. To use uvicorn directly, pass `--host 0.0.0.0`:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn hub.main:app --host 0.0.0.0 --port 8080
+```
+
+Then, on the host:
+
+1. **Open the port in the firewall.** On Windows (run PowerShell as admin) allow inbound TCP 8080:
+   ```powershell
+   New-NetFirewallRule -DisplayName "Apollo Streaming Lab hub" -Direction Inbound `
+       -Action Allow -Protocol TCP -LocalPort 8080
+   ```
+   On Linux use your firewall (e.g. `sudo ufw allow 8080/tcp`).
+2. **Find the host's LAN IP** (`ipconfig` on Windows / `ip addr` on Linux) and browse to
+   `http://<host-ip>:8080` from another device. That IP:port is the `HUB` URL you give the
+   collectors.
+
+Data goes to `./data` next to the repo (override with `ASL_DATA_DIR`). This runs in the
+foreground with no auto-restart — for always-on use prefer a Docker option above (or wrap it in a
+service, e.g. NSSM on Windows or a systemd unit on Linux). The hub has no built-in auth, so anyone
+who can reach `:8080` can use it — keep it on a trusted LAN or gate access with your firewall /
+WireGuard.
+
+---
+
+## Configuration (`.env`)
+
+All runtime config is environment variables, resolved in [`hub/config.py`](../hub/config.py):
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `TS_AUTHKEY` | — | Tailscale auth key (Option B only). |
+| `ASL_COPILOT_BACKEND` | `mock` | `mock` / `cli` / `sdk` — see [copilot-analysis.md](./copilot-analysis.md). |
+| `ASL_COPILOT_TOKEN` | — | GitHub token with a Copilot entitlement (`cli`/`sdk`). Falls back to `GITHUB_TOKEN`. |
+| `ASL_COPILOT_MODEL` | `auto` | Copilot model name. |
+| `ASL_DATA_DIR` | `/data` (Docker) · `./data` (direct) | Where the SQLite DB + artifacts live. |
+| `ASL_HOST` / `ASL_PORT` | `0.0.0.0` / `8080` | Bind address/port for `python -m hub` (and inside the container). |
+
+Data lives under `data/` and secrets in `.env` — both are gitignored; never commit either.

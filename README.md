@@ -13,24 +13,28 @@ Each test is a **session** that links, in one place:
 - your **notes / experience**, and
 - an on-demand **Copilot analysis** that deciphers what happened.
 
-The hub is viewable from **any device** on the tailnet (PC / TV / phone browser).
+The hub is viewable from **any device** (PC / TV / phone browser) over your LAN/WireGuard or tailnet.
 
 ## Architecture
 
 ```
   Apollo host (Windows)          Clients                         Hub (Docker on watchtower)
   ┌───────────────────┐   ┌─────────────────────────┐           ┌───────────────────────────┐
-  │ Start-AslSession  │   │ Linux Moonlight (.sh)    │           │ tailscale sidecar          │
-  │  → sunshine.log   │   │ Windows Moonlight (.ps1) │  Tailscale│  (own netns, `serve` 443) │
-  │  → link/AP samples│──▶│ Android Artemis (manual) │──────────▶│ hub app (FastAPI+SQLite)  │
-  └───────────────────┘   └─────────────────────────┘  (WGmesh) │  network_mode: service:ts │
-                                                                 │  Copilot analysis (opt-in)│
-                                                                 └───────────────────────────┘
+  │ Start-AslSession  │   │ Linux Moonlight (.sh)    │  LAN /    │ hub app (FastAPI + SQLite)│
+  │  → sunshine.log   │   │ Windows Moonlight (.ps1) │ WireGuard │  side-by-side logs, RSSI  │
+  │  → link/AP samples│──▶│ Android/Xbox (manual UI) │──or──────▶│  chart, notes, Copilot    │
+  └───────────────────┘   └─────────────────────────┘  Tailscale└───────────────────────────┘
 ```
 
-- **Tailnet-only:** the hub has **no published LAN ports**; collectors reach it over Tailscale
-  via its MagicDNS name. Nothing bridges the gaming VLAN ↔ DMZ.
-- **Tailscale runs as a Docker sidecar** (the hub uses `network_mode: service:tailscale`).
+Three cooperating parts:
+- **`hub/`** — FastAPI app: JSON API + server-rendered Jinja UI + SQLite + Copilot analyzer.
+- **`collectors/`** — the stdlib-only capture agent (`python -m asl_collector`) plus Windows
+  (`.ps1`) and Linux (`.sh`) launchers. Runs on the machines under test and POSTs logs, link
+  samples, and net tests to the hub. Android/Xbox are captured manually via the hub UI.
+- **`network/`** — iperf3 runner/parser + per-network-path scenario presets.
+
+The hub is reached either over your **LAN / WireGuard** (recommended) or **tailnet-only** behind
+a Tailscale sidecar with no published LAN ports — see [docs/deploy.md](./docs/deploy.md).
 
 ## Repo layout
 ```
@@ -41,13 +45,11 @@ collectors/
   asl_collector/     shared, stdlib-only lib: link detection, log slicing, hub client, netmon
   windows/           Start-AslSession.ps1  (Apollo host or Windows Moonlight/Artemis)
   linux/             asl-session.sh        (Linux Moonlight)
-  android/           agent-less capture guide (paste log + manual link entry)
-  xbox/              agent-less capture guide for Xbox (Moonlight)
 network/             iperf3 runner/parser + scenario presets
-deploy/              Tailscale serve config, ACL snippet, deploy runbook
-docs/                log paths, scenario matrix, troubleshooting
+deploy/              Tailscale serve config (serve.json) + ACL snippet
+docs/                all documentation (see below)
 samples/ tests/      sample tool output + pytest suite
-Dockerfile docker-compose.yaml .env.example
+Dockerfile  docker-compose.yaml  docker-compose.lan.yaml  .env.example
 ```
 
 ## Quickstart — run the hub locally (dev)
@@ -56,64 +58,31 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 # Reachable only from this machine (localhost):
 .\.venv\Scripts\python.exe -m uvicorn hub.main:app --reload --port 8080   # http://127.0.0.1:8080
-# Reachable from other devices on the LAN (binds 0.0.0.0:8080 via config):
+# Reachable from other devices (binds 0.0.0.0:8080 via config):
 .\.venv\Scripts\python.exe -m hub                                          # http://<this-host-ip>:8080
 ```
 > A bare `uvicorn hub.main:app` binds to **127.0.0.1 only** — use `python -m hub` (or add
-> `--host 0.0.0.0`) to reach it from other devices, and allow the port in your host firewall.
-> For always-on use, deploy on watchtower instead (see below).
+> `--host 0.0.0.0`) to reach it from other devices, and open the port in your host firewall.
+> Running it on the host this way is a supported deploy (**Option C** in
+> [docs/deploy.md](./docs/deploy.md)); for always-on use a Docker deploy is better.
 
-## Deploy the hub
-Two options — see the **[host & client setup guide](./docs/host-client-setup.md)** for the full walkthrough:
-- **LAN / WireGuard (recommended for this setup):** `docker compose -f docker-compose.lan.yaml up -d --build`.
-  Reachable at `http://<watchtower-ip>:8080` — local devices hit the LAN IP, remote devices reach
-  it over their UniFi **WireGuard** tunnel. Control access with your firewall.
-- **Tailnet-only (optional):** `docker compose up -d --build` (Tailscale sidecar); reachable at
-  `https://apollo-streaming-lab.<tailnet>.ts.net`. Set `TS_AUTHKEY` in `.env` and apply
-  [deploy/tailscale-acl.snippet.hujson](./deploy/tailscale-acl.snippet.hujson). See [deploy/README.md](./deploy/README.md).
-
-## Capture a session
-See the **[host & client setup guide](./docs/host-client-setup.md)** for local vs remote (WireGuard) details.
+## Capture a session (in brief)
 1. Create a session in the UI (**+ New session**) — or let a collector create it with `--create`.
-2. On the **host** and each **client**, run the collector and attach to the session id (`HUB` = your hub URL):
-   ```powershell
-   # Windows Apollo host
-   collectors\windows\Start-AslSession.ps1 -HubUrl HUB -SessionId <id> -Source host
-   ```
-   ```bash
-   # Linux Moonlight client
-   collectors/linux/asl-session.sh --hub-url HUB \
-       --session-id <id> --source client --role moonlight --interval 15 --log <moonlight-log>
-   ```
-   Android (Artemis) / Xbox (Moonlight): agent-less — use the hub's **Manual entry** panel; see
-   [collectors/android/README.md](./collectors/android/README.md) / [collectors/xbox/README.md](./collectors/xbox/README.md).
-3. Optional network test:
-   ```bash
-   # host: iperf3 -s   |   client:
-   python network/iperf_runner.py --host <host-ip> --hub-url HUB --session-id <id>
-   ```
+2. Run the collector on the **host** and each **client**, attached to the session id.
+3. Optionally run an iperf3 test (`network/iperf_runner.py`).
 4. Stop the collectors, add **notes**, set the **outcome**, then click **Analyze**.
 
-## What the host collector fills in automatically
-When run with `--source host`, on stop the collector **fills blank session fields** (never
-overriding values you set in the UI/CLI):
-- from the Apollo log — **codec, resolution, fps, bitrate, HDR**;
-- from the live connection to Apollo's ports — the **client** IP and the **network path**
-  (`192.168.2.0/24` WireGuard VLAN → `remote-WireGuard`, `100.64.0.0/10` → `remote-Tailscale`,
-  other private → `local-LAN`, public → `remote-WAN`);
-- `host`/`client` also default to the capturing machine's hostname.
+The **host** collector auto-fills blank session fields on stop (codec/resolution/fps/bitrate/HDR
+from the log; client IP + network path from the live connection) and never overrides values you
+set yourself. Full walkthrough (local vs remote WireGuard): [docs/host-client-setup.md](./docs/host-client-setup.md).
 
-So a bare `--create --source host` still ends up populated after a stream.
-
-## Copilot analysis
-Set `ASL_COPILOT_BACKEND`:
-- `mock` (default) — offline, rule-based diagnosis (roams, loss/jitter, log errors, NIC
-  mismatch). No token, no data leaves the box.
-- `cli` — shells out to the Copilot CLI (`copilot -p … -s --no-ask-user`).
-- `sdk` — embeds the GitHub Copilot Python SDK.
-
-`cli`/`sdk` need `ASL_COPILOT_TOKEN` (a GitHub token with a Copilot entitlement). Analysis is
-**opt-in per session** (logs are only sent when you click Analyze / ask a chat question).
+## Documentation
+All docs live in [`docs/`](./docs/):
+- **[Host & client setup](./docs/host-client-setup.md)** — wire up host + hub + clients; per-test capture (local & remote).
+- **[Deploying the hub](./docs/deploy.md)** — LAN/WireGuard vs tailnet-only, and `.env` config.
+- **[Agent-less capture (Android & Xbox)](./docs/agentless-capture.md)** — manual capture via the hub UI.
+- **[Copilot analysis](./docs/copilot-analysis.md)** — the `mock`/`cli`/`sdk` backends and their config.
+- **[Log paths](./docs/log-paths.md)** · **[Scenario matrix](./docs/scenario-matrix.md)** · **[Troubleshooting](./docs/troubleshooting.md)**
 
 ## Testing
 ```powershell

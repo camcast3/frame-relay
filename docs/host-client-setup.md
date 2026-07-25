@@ -36,7 +36,7 @@ Pick the deployment that matches how your devices connect:
   reach the same IP over WireGuard. Allow the WG VLAN → hub:8080 in your firewall.
 - **Tailnet-only (optional):** `docker compose up -d --build` (Tailscale sidecar, `tailscale
   serve`); reachable only at `https://apollo-streaming-lab.<tailnet>.ts.net`. Use this if you'd
-  rather not expose a LAN port. See [../deploy/README.md](../deploy/README.md).
+  rather not expose a LAN port. See [deploy.md](./deploy.md).
 
 Set `ASL_COPILOT_BACKEND` / `ASL_COPILOT_TOKEN` in `.env` if you want real Copilot analysis.
 
@@ -67,11 +67,11 @@ collectors\windows\Start-AslSession.ps1 -HubUrl HUB -SessionId <id> -Source clie
 ```
 
 **Client — Android Artemis:** use the session page's **Manual entry** panel (paste the exported
-log + enter Wi-Fi/AP details). See [../collectors/android/README.md](../collectors/android/README.md).
+log + enter Wi-Fi/AP details). See [agentless-capture.md](./agentless-capture.md).
 
 **Client — Xbox (Moonlight):** agent-less (no Python on Xbox) → use the **Manual entry** panel
 (role `moonlight`); the host collector still auto-detects the Xbox's IP + network path. See
-[../collectors/xbox/README.md](../collectors/xbox/README.md).
+[agentless-capture.md](./agentless-capture.md).
 
 Stream for a few minutes, then press **Enter** in each collector window. Add `-StopSession` /
 `--stop-session` if you want the session auto-marked stopped.
