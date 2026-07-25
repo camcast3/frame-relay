@@ -75,7 +75,11 @@ python -m venv .venv
 4. Stop the collectors, add **notes**, set the **outcome**, then click **Analyze**.
 
 While capturing, collectors **post logs + link samples every ~30s** (`--post-interval`), so the
-session page updates **live** (it auto-refreshes until the session is stopped).
+session page updates **live** (both the session page and the sessions list auto-refresh until the
+session is stopped). The host collector fills blank session metadata (codec/res/fps/HDR, client IP
++ network path) **live during** the capture too. For a live **client** log, launch Artemis/Moonlight
+via the collector (`-Launch`) so it captures the app's real-time stderr — its `%TEMP%` log file is
+buffered and only flushes in bursts.
 
 The **host** collector auto-fills blank session fields on stop (codec/resolution/fps/bitrate/HDR
 from the log; client IP + network path from the live connection) and never overrides values you

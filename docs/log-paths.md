@@ -19,16 +19,30 @@ every machine runs **NTP** — the hub correlates host and client logs by timest
 
 ## Moonlight-based clients (Windows) — Artemis & Moonlight-Qt
 Both are Qt apps that write a **per-run** diagnostic log into `%TEMP%`:
-- **Artemis** (Apollo's Moonlight fork — "Artemis Desktop Project"): `%TEMP%\Artemis-<n>.log`.
-  With `-Role artemis` the collector **auto-detects the newest run** — no `-LogPath` needed. To
-  pin a specific run instead:
-  ```powershell
-  $log = (Get-ChildItem "$env:TEMP\Artemis-*.log" |
-          Sort-Object LastWriteTime -Desc | Select-Object -First 1).FullName
-  # ... -Source client -Role artemis -LogPath $log
-  ```
-- **Moonlight-Qt:** no fixed log path (auto-detection returns nothing on Windows) — use the app's
-  **Copy diagnostic logs** action, save the file, and pass it with `-LogPath` (`-Role moonlight`).
+- **Artemis** (Apollo's Moonlight fork — "Artemis Game Streaming"): `%TEMP%\Artemis-<launch_ms>.log`
+  (one file per launch, named after the process start time). Its config/cache live under
+  `%LOCALAPPDATA%\Artemis Desktop Project\Artemis\` (boxart, controller DB, Qt pipeline cache — no
+  live log there); UI settings are Qt `QSettings` in the registry.
+  - With `-Role artemis` the collector **auto-detects the newest run** — no `-LogPath` needed. To
+    pin a specific run instead:
+    ```powershell
+    $log = (Get-ChildItem "$env:TEMP\Artemis-*.log" |
+            Sort-Object LastWriteTime -Desc | Select-Object -First 1).FullName
+    # ... -Source client -Role artemis -LogPath $log
+    ```
+  - ⚠️ **The `%TEMP%` log is heavily buffered** — Artemis flushes it in large bursts (often only
+    near stream end), so tailing the file is **not live**. For a live client log, launch Artemis
+    **through the collector** so it captures the process's **stderr** in real time (Qt writes the
+    same log to stderr and flushes each line):
+    ```powershell
+    collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source client -Role artemis -AttachLatest `
+        -Launch "$env:ProgramFiles\Artemis Game Streaming\Artemis.exe"
+    ```
+    The capture then runs until you close Artemis (or Ctrl+C). Common install path:
+    `C:\Program Files\Artemis Game Streaming\Artemis.exe`.
+- **Moonlight-Qt:** no fixed log path (auto-detection returns nothing on Windows) — either launch
+  it via `-Launch` (same stderr capture) or use the app's **Copy diagnostic logs** action and pass
+  the saved file with `-LogPath` (`-Role moonlight`).
   > Heads-up: `%TEMP%\Moonlight_Game_Streaming_Client_*.log` is the **installer** (WiX/Burn) log,
   > *not* a stream log — don't attach it.
 - `-LogPath` accepts globs, but the collector posts **every** match, so prefer selecting the single

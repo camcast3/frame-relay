@@ -142,6 +142,72 @@ const ASL = (() => {
     document.body.appendChild(d); setTimeout(() => d.remove(), 1800);
   }
 
+  // --- sessions index refresh while any capture is still running ---------------
+  function appendTextCell(tr, text, cls) {
+    const td = document.createElement("td");
+    if (cls) td.className = cls;
+    td.textContent = text;
+    tr.appendChild(td);
+  }
+
+  function appendPillCell(tr, type, value) {
+    const td = document.createElement("td");
+    const span = document.createElement("span");
+    span.className = `pill ${type}-${value}`;
+    span.textContent = value;
+    td.appendChild(span);
+    tr.appendChild(td);
+  }
+
+  function renderSessionRows(sessions) {
+    const tb = document.getElementById("sessions-tbody"); if (!tb) return false;
+    const rows = [];
+    for (const s of sessions) {
+      const id = String(s.id || "");
+      const href = `/sessions/${id}`;
+      const tr = document.createElement("tr");
+      tr.onclick = () => { location = href; };
+
+      const nameTd = document.createElement("td");
+      const link = document.createElement("a");
+      link.href = href;
+      link.textContent = s.name || id;
+      const br = document.createElement("br");
+      const idSpan = document.createElement("span");
+      idSpan.className = "muted mono";
+      idSpan.textContent = id;
+      nameTd.appendChild(link);
+      nameTd.appendChild(br);
+      nameTd.appendChild(idSpan);
+      tr.appendChild(nameTd);
+
+      appendPillCell(tr, "status", s.status);
+      appendPillCell(tr, "outcome", s.outcome);
+      appendTextCell(tr, s.network_path || "—");
+      appendTextCell(tr, `${s.host || "?"} → ${s.client || "?"}`);
+      appendTextCell(tr, `${s.codec || "—"}${s.hdr ? " · HDR" : ""}`);
+      appendTextCell(tr, (s.created_at || "").substring(0, 19), "mono");
+      rows.push(tr);
+    }
+    tb.replaceChildren(...rows);
+    return sessions.some(s => s.status === "active");
+  }
+
+  async function refreshSessionsList() {
+    let sessions;
+    try { sessions = await api("GET", "/api/sessions"); } catch (e) { return true; }
+    return renderSessionRows(sessions || []);
+  }
+
+  function initIndexPage() {
+    const table = document.getElementById("sessions-table");
+    const tb = document.getElementById("sessions-tbody");
+    if (!table || !tb || !tb.querySelector(".status-active")) return;
+    const timer = setInterval(async () => {
+      if (!(await refreshSessionsList())) clearInterval(timer);
+    }, 8000);
+  }
+
   // --- live refresh while a capture is still running ---------------------------
   function renderLinkRows(samples) {
     const tb = document.getElementById("link-tbody"); if (!tb) return;
@@ -234,6 +300,6 @@ const ASL = (() => {
     wirePasteLog(); wireManualLink(); drawRssiChart(); startLiveRefresh();
   }
 
-  return { wireNewSessionForm, initSessionPage, saveOutcome, saveNotes, stopSession,
+  return { wireNewSessionForm, initIndexPage, initSessionPage, saveOutcome, saveNotes, stopSession,
            deleteSession, analyze, applyLogFilter };
 })();

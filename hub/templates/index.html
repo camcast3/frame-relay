@@ -4,12 +4,12 @@
 {% if not sessions %}
   <p class="muted">No sessions yet. <a href="/sessions/new">Start one</a> to begin capturing.</p>
 {% else %}
-<table class="grid">
+<table id="sessions-table" class="grid">
   <thead>
     <tr><th>Session</th><th>Status</th><th>Outcome</th><th>Path</th><th>Host → Client</th>
         <th>Codec</th><th>Created (UTC)</th></tr>
   </thead>
-  <tbody>
+  <tbody id="sessions-tbody">
   {% for s in sessions %}
     <tr onclick="location='/sessions/{{ s.id }}'">
       <td><a href="/sessions/{{ s.id }}">{{ s.name or s.id }}</a><br><span class="muted mono">{{ s.id }}</span></td>
@@ -25,3 +25,5 @@
 </table>
 {% endif %}
 {% endblock %}
+
+{% block scripts %}<script>ASL.initIndexPage();</script>{% endblock %}

@@ -20,6 +20,13 @@
   # Windows Moonlight/Artemis client, zero copy-paste: attach to the newest session the host
   # created (no -SessionId), auto-detect the newest Artemis log.
   .\Start-AslSession.ps1 -HubUrl http://192.168.69.159:8080 -Source client -Role artemis -AttachLatest
+
+.EXAMPLE
+  # LIVE client logs: launch Artemis via the collector and capture its stderr in real time
+  # (Artemis buffers its %TEMP% log, so the file only flushes in bursts). Capture runs until
+  # you close Artemis.
+  .\Start-AslSession.ps1 -HubUrl http://192.168.69.159:8080 -Source client -Role artemis `
+      -AttachLatest -Launch "$env:ProgramFiles\Artemis Game Streaming\Artemis.exe"
 #>
 [CmdletBinding()]
 param(
@@ -30,6 +37,8 @@ param(
   [ValidateSet('host', 'client')][string]$Source = 'host',
   [ValidateSet('apollo', 'moonlight', 'artemis')][string]$Role,
   [string[]]$LogPath,
+  [string]$Launch,
+  [string[]]$LaunchArgs,
   [string]$Machine,
   [double]$IntervalSeconds = 15,
   [double]$PostIntervalSeconds = 30,
@@ -71,6 +80,8 @@ if ($Role)        { $asl += @('--role', $Role) }
 if ($Machine)     { $asl += @('--machine', $Machine) }
 if ($StopSession) { $asl += '--stop-session' }
 foreach ($p in $LogPath) { $asl += @('--log', $p) }
+if ($Launch)      { $asl += @('--launch', $Launch) }
+foreach ($a in $LaunchArgs) { $asl += @('--launch-arg', $a) }
 if ($Name)        { $asl += @('--name', $Name) }
 if ($HostName)    { $asl += @('--host', $HostName) }
 if ($Client)      { $asl += @('--client', $Client) }

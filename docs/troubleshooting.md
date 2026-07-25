@@ -12,7 +12,8 @@ troubleshooting docs.
 | No/black video, decoder errors | Codec/HDR unsupported by client | Client log flags (HEVC/AV1/HDR); try HEVC SDR first |
 | Can't connect remotely | NAT / port forwarding | Run **MIST** (Moonlight Internet Streaming Tester); attach findings to notes |
 | Can't pair / web UI | Credentials / firewall | Apollo log pairing lines; `sunshine --creds <user> <pass>` |
-| Session page shows no client logs/samples mid-capture | Collector posts on a timer, not instantly | Collectors flush every `--post-interval` (~30s) and the page auto-refreshes; wait one interval, or press **Enter** to force a final flush. `client` IP / network-path are filled by the **host** collector on stop |
+| Session page shows no client logs/samples mid-capture | Collector posts on a timer, not instantly | Collectors flush every `--post-interval` (~30s) and the page auto-refreshes; wait one interval, or press **Enter** to force a final flush. `client` IP / network-path are filled by the **host** collector |
+| Client (Artemis) logs only appear at stream end | Artemis **buffers** its `%TEMP%` log, flushing in bursts | Launch Artemis via the collector (`-Launch`) to capture its **stderr live** — see [log-paths.md](./log-paths.md) |
 
 ## Workflow
 1. Reproduce with verbose logging on (see [log-paths.md](./log-paths.md)).

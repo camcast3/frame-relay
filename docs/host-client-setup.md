@@ -68,7 +68,11 @@ collectors/linux/asl-session.sh --hub-url HUB --source client --role moonlight -
 ```powershell
 # Artemis: newest %TEMP%\Artemis-*.log is found automatically
 collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source client -Role artemis -AttachLatest
-# Moonlight-Qt on Windows has no fixed log path — use "Copy diagnostic logs" and pass it:
+# For LIVE client logs, launch Artemis via the collector (its %TEMP% log is buffered; stderr is
+# real-time). Capture runs until you close Artemis:
+collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source client -Role artemis -AttachLatest `
+    -Launch "$env:ProgramFiles\Artemis Game Streaming\Artemis.exe"
+# Moonlight-Qt on Windows has no fixed log path — launch it the same way, or pass -LogPath:
 collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source client -Role moonlight -AttachLatest `
     -LogPath "$env:TEMP\Moonlight\Moonlight.log"
 ```

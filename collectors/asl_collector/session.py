@@ -11,12 +11,18 @@ Typical use on a machine under test (run with the system Python; stdlib only):
     python3 -m asl_collector --hub-url https://apollo-streaming-lab.<tailnet>.ts.net \
         --attach-latest --source client --role moonlight \
         --log ~/.config/Moonlight*/Moonlight.log --interval 15 --duration 0
+
+    # Artemis client (Windows); LIVE logs by launching the app and capturing its stderr
+    python -m asl_collector --hub-url http://192.168.69.159:8080 --attach-latest \
+        --source client --role artemis \
+        --launch "C:\\Program Files\\Artemis Game Streaming\\Artemis.exe"
 """
 from __future__ import annotations
 
 import argparse
 import glob
 import platform
+import subprocess
 import sys
 import threading
 from datetime import datetime, timezone
@@ -28,6 +34,16 @@ from .netmon import LinkMonitor
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _reader(stream, buf: list[str], lock: threading.Lock) -> None:
+    """Drain a launched app's stdout/stderr line-by-line into a shared buffer (live)."""
+    try:
+        for line in iter(stream.readline, ""):
+            with lock:
+                buf.append(line)
+    except Exception:  # noqa: BLE001 - stream closed / process gone
+        pass
 
 
 def _expand(paths: list[str]) -> list[str]:
@@ -138,13 +154,32 @@ def run(args: argparse.Namespace) -> str:
             })
             print(f"created session {sid}")
 
-    if not args.log:
+    # Launch mode: spawn the client app (Artemis/Moonlight-Qt) and capture its stderr live.
+    # Qt writes its diagnostic log to stderr in real time, unlike the buffered %TEMP% file.
+    launched = None
+    stderr_buf: Optional[list[str]] = None
+    stderr_lock = threading.Lock()
+    if args.launch:
+        cmd = [args.launch] + list(args.launch_arg or [])
+        try:
+            launched = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, bufsize=1, encoding="utf-8", errors="replace",
+            )
+        except OSError as e:
+            raise SystemExit(f"failed to launch {cmd!r}: {e}")
+        stderr_buf = []
+        threading.Thread(target=_reader, args=(launched.stdout, stderr_buf, stderr_lock),
+                         daemon=True).start()
+        print(f"launched {cmd[0]} (pid {launched.pid}); capturing its stderr live")
+
+    if not args.log and not launched:
         detected = logfind.discover(args.source, role)
         if detected:
             args.log = detected
             print(f"auto-detected {role} log: {detected[0]}")
         else:
-            print(f"no {role} log auto-detected for this platform; pass --log explicitly")
+            print(f"no {role} log auto-detected for this platform; pass --log or --launch")
 
     logs = _expand(args.log)
     start = _now()
@@ -164,7 +199,7 @@ def run(args: argparse.Namespace) -> str:
             conn_monitor.start()
 
     def flush(final: bool = False) -> None:
-        """Post any log bytes / link samples not sent yet. Safe to call repeatedly."""
+        """Post any log bytes / stderr / link samples not sent yet. Safe to call repeatedly."""
         nonlocal posted_link_idx
         with flush_lock:
             for path in logs:
@@ -183,6 +218,16 @@ def run(args: argparse.Namespace) -> str:
                 print(f"posted {len(text.splitlines())} log lines from {path}")
                 if args.source == "host":
                     host_log_parts.append(text)
+            if stderr_buf is not None:
+                with stderr_lock:
+                    pending_lines = stderr_buf[:]
+                    del stderr_buf[:]
+                if pending_lines:
+                    text = "".join(pending_lines)
+                    client.post_log(hub, sid, args.source, role, text, machine)
+                    print(f"posted {len(pending_lines)} log lines from <{args.launch} stderr>")
+                    if args.source == "host":
+                        host_log_parts.append(text)
             if monitor:
                 pending = monitor.samples[posted_link_idx:]
                 if pending:
@@ -190,6 +235,13 @@ def run(args: argparse.Namespace) -> str:
                     posted_link_idx += len(pending)
                     aps = {s.get("bssid") for s in pending if s.get("bssid")}
                     print(f"posted {added} link samples ({len(aps)} distinct AP(s))")
+            # Live-fill blank session metadata (client IP / path / codec…) during capture, not
+            # just on stop. _enrich_host re-reads the session each call and only fills blanks.
+            if args.source == "host" and conn_monitor is not None:
+                try:
+                    _enrich_host(hub, sid, "\n".join(host_log_parts), conn_monitor.current(), args)
+                except Exception:  # noqa: BLE001 - enrichment is best-effort
+                    pass
 
     stop_evt = threading.Event()
     flusher = None
@@ -210,6 +262,9 @@ def run(args: argparse.Namespace) -> str:
         if args.duration and args.duration > 0:
             import time
             time.sleep(args.duration)
+        elif launched is not None:
+            print("capturing until the launched app exits (Ctrl+C to stop early)...")
+            launched.wait()
         else:
             input("Press Enter to stop the capture...\n")
     except KeyboardInterrupt:
@@ -253,6 +308,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--role", choices=["apollo", "moonlight", "artemis"])
     p.add_argument("--log", action="append", default=[], help="log file path/glob (repeatable); "
                    "omit to auto-detect from --source/--role (see logfind.py)")
+    p.add_argument("--launch", help="launch this client app (e.g. Artemis/Moonlight) and capture "
+                   "its stderr live instead of tailing a buffered log file")
+    p.add_argument("--launch-arg", action="append", default=[], dest="launch_arg",
+                   help="argument to pass to --launch (repeatable)")
     p.add_argument("--machine", help="reporting machine name (default: hostname)")
     p.add_argument("--interval", type=float, default=15.0, help="link sample interval seconds (0=off)")
     p.add_argument("--post-interval", type=float, default=30.0, dest="post_interval",

@@ -118,6 +118,10 @@ class ClientMonitor:
         while not self._stop.wait(self.interval):
             self._tick()
 
+    def current(self) -> Optional[str]:
+        """Best client IP seen so far, without stopping the monitor (for live enrichment)."""
+        return max(set(self.seen), key=self.seen.count) if self.seen else None
+
     def start(self) -> None:
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
