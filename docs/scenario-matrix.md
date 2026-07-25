@@ -14,10 +14,11 @@ Create one hub session per row; the presets live in `network/scenarios.py`.
 
 For each row:
 1. On the client, note the AP you're on (the collector records SSID/BSSID automatically).
-2. Start the collector on the **host** and the **client** (see repo README), attach both to
-   the same session id.
+2. Start the collector on the **host** (`-Create`), then on each **client** — clients attach to
+   the host's session automatically (`-AttachLatest`), no session id to copy (see repo README).
 3. Run an iperf3 test (`network/iperf_runner.py`).
-4. Stream for a few minutes; try to trigger the limitation (movement, load, roaming).
+4. Stream for a few minutes; try to trigger the limitation (movement, load, roaming). Logs +
+   link samples post live (~30s), so the session page fills in while you watch.
 5. Stop the collectors, add your **notes**, set the **outcome**, then click **Analyze**.
 
 ## What each path stresses

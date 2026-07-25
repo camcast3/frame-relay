@@ -81,9 +81,10 @@ session is stopped). The host collector fills blank session metadata (codec/res/
 via the collector (`-Launch`) so it captures the app's real-time stderr — its `%TEMP%` log file is
 buffered and only flushes in bursts.
 
-The **host** collector auto-fills blank session fields on stop (codec/resolution/fps/bitrate/HDR
-from the log; client IP + network path from the live connection) and never overrides values you
-set yourself. Full walkthrough (local vs remote WireGuard): [docs/host-client-setup.md](./docs/host-client-setup.md).
+The **host** collector auto-fills blank session fields **live during the capture** (codec/
+resolution/fps/bitrate/HDR from the log; client IP + network path from the live connection) and
+never overrides values you set yourself. Full walkthrough (local vs remote WireGuard):
+[docs/host-client-setup.md](./docs/host-client-setup.md).
 
 ## Documentation
 All docs live in [`docs/`](./docs/):
