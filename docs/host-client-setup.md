@@ -46,25 +46,36 @@ Below, `HUB` = the URL from this step (e.g. `http://192.168.86.246:8080`).
 
 ## C. Per test — LOCAL (LAN)
 Create the session on the **host** (it auto-fills codec/resolution/fps/bitrate/HDR from the log
-and the client IP + network path from the live connection), then attach each client to its id.
+and the client IP + network path from the live connection). **Clients don't need the session id**
+— they attach to the session the host just created (auto-picked when it's the only one awaiting a
+client, or pass `-AttachLatest` / `--attach-latest` to always take the newest, no copy-paste).
+The **log location is auto-detected from `-Source`/`-Role`** too, so most clients need no path.
 
 **Host — Apollo (Windows):**
 ```powershell
 collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Create -Name "couch LAN HEVC" -Source host
-# prints the new session id
+# prints the new session id (for reference only — clients attach automatically)
 ```
 
 **Client — Linux Moonlight (couch box):**
 ```bash
-collectors/linux/asl-session.sh --hub-url HUB --session-id <id> --source client --role moonlight \
-    --interval 15 --log "$HOME/.var/app/com.moonlight_stream.Moonlight/config/.../Moonlight.conf"
+collectors/linux/asl-session.sh --hub-url HUB --source client --role moonlight --attach-latest \
+    --interval 15
+# Moonlight-Qt log auto-detected under ~/.var/app/... or ~/.config/...; add --log if yours differs
 ```
 
 **Client — Windows Moonlight/Artemis:**
 ```powershell
-collectors\windows\Start-AslSession.ps1 -HubUrl HUB -SessionId <id> -Source client -Role moonlight `
+# Artemis: newest %TEMP%\Artemis-*.log is found automatically
+collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source client -Role artemis -AttachLatest
+# Moonlight-Qt on Windows has no fixed log path — use "Copy diagnostic logs" and pass it:
+collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source client -Role moonlight -AttachLatest `
     -LogPath "$env:TEMP\Moonlight\Moonlight.log"
 ```
+
+> Prefer to be explicit? Pass `-SessionId <id>` / `--session-id <id>` instead of `-AttachLatest`.
+> With neither, the collector attaches automatically when exactly one session is awaiting a
+> client, and only prompts you to choose when several are.
 
 **Client — Android Artemis:** use the session page's **Manual entry** panel (paste the exported
 log + enter Wi-Fi/AP details). See [agentless-capture.md](./agentless-capture.md).

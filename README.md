@@ -42,7 +42,7 @@ hub/                 FastAPI hub: API, server-rendered UI, SQLite, Copilot analy
   routers/           sessions, ingest (logs/links/nettests/artifacts), analysis
   templates/ static/ side-by-side log view, RSSI/roam chart, notes, Copilot panel + chat
 collectors/
-  asl_collector/     shared, stdlib-only lib: link detection, log slicing, hub client, netmon
+  asl_collector/     shared, stdlib-only lib: link detection, log slicing/discovery, hub client, netmon
   windows/           Start-AslSession.ps1  (Apollo host or Windows Moonlight/Artemis)
   linux/             asl-session.sh        (Linux Moonlight)
 network/             iperf3 runner/parser + scenario presets
@@ -67,8 +67,10 @@ python -m venv .venv
 > [docs/deploy.md](./docs/deploy.md)); for always-on use a Docker deploy is better.
 
 ## Capture a session (in brief)
-1. Create a session in the UI (**+ New session**) — or let a collector create it with `--create`.
-2. Run the collector on the **host** and each **client**, attached to the session id.
+1. Create the session on the **host** collector (`-Create`) — or in the UI (**+ New session**).
+2. Run the collector on each **client**: it **attaches to the host's session automatically**
+   (no id to copy — auto-picks the lone awaiting session, or pass `--attach-latest`) and
+   **auto-detects the log from `--source`/`--role`** (override with `--log`).
 3. Optionally run an iperf3 test (`network/iperf_runner.py`).
 4. Stop the collectors, add **notes**, set the **outcome**, then click **Analyze**.
 

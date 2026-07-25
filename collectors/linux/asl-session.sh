@@ -10,6 +10,11 @@
 #       --source client --role moonlight --interval 15 \
 #       --log "$HOME/.var/app/com.moonlight_stream.Moonlight/config/Moonlight Game Streaming Project/Moonlight.conf"
 #
+# Example (Moonlight client, zero copy-paste: attach to the newest session the host created):
+#   ./asl-session.sh --hub-url https://apollo-streaming-lab.<tailnet>.ts.net \
+#       --source client --role moonlight --attach-latest --interval 15 \
+#       --log "$HOME/.var/app/com.moonlight_stream.Moonlight/config/Moonlight Game Streaming Project/Moonlight.conf"
+#
 # Moonlight-Qt log locations vary by install:
 #   Flatpak : ~/.var/app/com.moonlight_stream.Moonlight/  (also `flatpak run` stderr)
 #   native  : ~/.config/Moonlight Game Streaming Project/

@@ -7,10 +7,9 @@ Typical use on a machine under test (run with the system Python; stdlib only):
         --session-id 20260723T101951-ab12 --source host --role apollo \
         --log "C:\\Program Files\\Apollo\\config\\sunshine.log" --interval 15
 
-    # Moonlight client (Linux); create the session on the fly
+    # Moonlight client (Linux); attach to the session the host just created (no id copy-paste)
     python3 -m asl_collector --hub-url https://apollo-streaming-lab.<tailnet>.ts.net \
-        --create --name "couch LAN HEVC" --host DOMINO --client couch \
-        --network-path local-LAN --source client --role moonlight \
+        --attach-latest --source client --role moonlight \
         --log ~/.config/Moonlight*/Moonlight.log --interval 15 --duration 0
 """
 from __future__ import annotations
@@ -22,7 +21,7 @@ import sys
 from datetime import datetime, timezone
 from typing import Optional
 
-from . import client, conninfo, hostmeta, logslice
+from . import client, conninfo, hostmeta, logslice, logfind
 from .netmon import LinkMonitor
 
 
@@ -67,26 +66,45 @@ def _enrich_host(hub: str, sid: str, log_text: str, client_ip: Optional[str],
 DEFAULT_WG_SUBNETS = ["192.168.2.0/24"]  # user's WireGuard VLAN (override with --wg-subnet)
 
 
-def _select_session(hub: str) -> str:
-    """Interactively pick a session that has no client attached yet.
+def _describe(s: dict) -> str:
+    name = s.get("name") or "(unnamed)"
+    host = s.get("host") or "?"
+    created = (s.get("created_at") or "")[:19]
+    return f"{name}  host={host}  {created}  ({s['id']})"
 
-    Saves the operator from copy-pasting a session id: the host creates the session,
-    the client just chooses it from the hub's awaiting-client list.
+
+def _select_session(hub: str, attach_latest: bool = False) -> str:
+    """Pick a session that has no client attached yet, without copy-pasting an id.
+
+    The host creates the session; the client attaches to it from the hub's awaiting-client
+    list (newest first). Selection needs no manual id entry in the common cases:
+
+    * ``attach_latest`` -> take the newest awaiting-client session, no prompt (fully scripted).
+    * exactly one awaiting session -> auto-attach to it, no prompt.
+    * several awaiting sessions on a TTY -> prompt to choose one.
     """
     sessions = client.list_sessions(hub, awaiting_client=True)
     if not sessions:
         raise SystemExit(
-            "no sessions awaiting a client on the hub; create one first "
+            "no sessions awaiting a client on the hub; create one on the host first "
             "(or pass --session-id / --create)"
         )
+    if attach_latest:
+        chosen = sessions[0]
+        print(f"attaching to latest awaiting-client session: {_describe(chosen)}")
+        return chosen["id"]
+    if len(sessions) == 1:
+        chosen = sessions[0]
+        print(f"attaching to the only awaiting-client session: {_describe(chosen)}")
+        return chosen["id"]
     print("Sessions awaiting a client:")
     for i, s in enumerate(sessions, 1):
-        name = s.get("name") or "(unnamed)"
-        host = s.get("host") or "?"
-        created = (s.get("created_at") or "")[:19]
-        print(f"  [{i}] {name}  host={host}  {created}  ({s['id']})")
+        print(f"  [{i}] {_describe(s)}")
     if not sys.stdin.isatty():
-        raise SystemExit("not a TTY; pass --session-id to select non-interactively")
+        raise SystemExit(
+            "multiple sessions awaiting a client and no TTY to choose; "
+            "pass --attach-latest to take the newest, or --session-id to pick one"
+        )
     while True:
         choice = input(f"Select 1-{len(sessions)} (q to quit): ").strip().lower()
         if choice in ("q", ""):
@@ -106,7 +124,7 @@ def run(args: argparse.Namespace) -> str:
     sid = args.session_id
     if not sid:
         if not args.create:
-            sid = _select_session(hub)
+            sid = _select_session(hub, attach_latest=args.attach_latest)
         else:
             # Default host/client to this machine's name based on which side we're capturing.
             default_host = args.host or (machine if args.source == "host" else None)
@@ -118,6 +136,14 @@ def run(args: argparse.Namespace) -> str:
                 "bitrate_mbps": args.bitrate_mbps, "hdr": args.hdr,
             })
             print(f"created session {sid}")
+
+    if not args.log:
+        detected = logfind.discover(args.source, role)
+        if detected:
+            args.log = detected
+            print(f"auto-detected {role} log: {detected[0]}")
+        else:
+            print(f"no {role} log auto-detected for this platform; pass --log explicitly")
 
     logs = _expand(args.log)
     start = _now()
@@ -180,12 +206,17 @@ def run(args: argparse.Namespace) -> str:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="asl_collector", description="Apollo Streaming Lab collector")
     p.add_argument("--hub-url", required=True, help="e.g. https://apollo-streaming-lab.<tailnet>.ts.net")
-    p.add_argument("--session-id", help="existing session id; omit to pick from the hub "
-                                         "interactively, or use --create for a new one")
+    p.add_argument("--session-id", help="existing session id; omit to attach to a session the "
+                                         "host created (auto-picks when only one is awaiting a "
+                                         "client, else prompts), or use --create for a new one")
+    p.add_argument("--attach-latest", action="store_true", dest="attach_latest",
+                   help="attach to the newest session awaiting a client without prompting "
+                        "(no session-id copy-paste; ideal for scripted clients)")
     p.add_argument("--create", action="store_true", help="create a new session")
     p.add_argument("--source", choices=["host", "client"], default="client")
     p.add_argument("--role", choices=["apollo", "moonlight", "artemis"])
-    p.add_argument("--log", action="append", default=[], help="log file path/glob (repeatable)")
+    p.add_argument("--log", action="append", default=[], help="log file path/glob (repeatable); "
+                   "omit to auto-detect from --source/--role (see logfind.py)")
     p.add_argument("--machine", help="reporting machine name (default: hostname)")
     p.add_argument("--interval", type=float, default=15.0, help="link sample interval seconds (0=off)")
     p.add_argument("--duration", type=int, default=0, help="capture seconds (0=until Enter)")

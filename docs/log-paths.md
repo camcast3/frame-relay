@@ -3,6 +3,10 @@
 Confirmed sources the collectors read from. **Turn logging up before testing** and make sure
 every machine runs **NTP** — the hub correlates host and client logs by timestamp.
 
+> **Auto-detection:** omit `--log` / `-LogPath` and the collector resolves the log from
+> `--source`/`--role` per platform (`collectors/asl_collector/logfind.py`). The paths below are
+> exactly what it looks for; pass `--log` only to override or when a path isn't listed.
+
 ## Apollo / Sunshine host (Windows)
 - **Log file:** `log_path` in the Apollo config (default `sunshine.log` in Apollo's config
   dir). Typical install paths:
@@ -10,19 +14,21 @@ every machine runs **NTP** — the hub correlates host and client logs by timest
   - `%ProgramFiles%\Sunshine\config\sunshine.log`
 - **Verbosity:** set `min_log_level` to `debug` (or `verbose`) in the Web UI → Configuration,
   or the config file. Lines are timestamped and include client connect/pair/disconnect events.
-- The `Start-AslSession.ps1` launcher auto-discovers these paths for `-Source host`.
+- The collector auto-detects these paths for `-Source host` / `-Role apollo` (override with
+  `--log`).
 
 ## Moonlight-based clients (Windows) — Artemis & Moonlight-Qt
 Both are Qt apps that write a **per-run** diagnostic log into `%TEMP%`:
 - **Artemis** (Apollo's Moonlight fork — "Artemis Desktop Project"): `%TEMP%\Artemis-<n>.log`.
-  Grab the newest run and pass it to the collector:
+  With `-Role artemis` the collector **auto-detects the newest run** — no `-LogPath` needed. To
+  pin a specific run instead:
   ```powershell
   $log = (Get-ChildItem "$env:TEMP\Artemis-*.log" |
           Sort-Object LastWriteTime -Desc | Select-Object -First 1).FullName
   # ... -Source client -Role artemis -LogPath $log
   ```
-- **Moonlight-Qt:** use the app's **Copy diagnostic logs** action and save the file, then pass it
-  with `-LogPath` (`-Role moonlight`).
+- **Moonlight-Qt:** no fixed log path (auto-detection returns nothing on Windows) — use the app's
+  **Copy diagnostic logs** action, save the file, and pass it with `-LogPath` (`-Role moonlight`).
   > Heads-up: `%TEMP%\Moonlight_Game_Streaming_Client_*.log` is the **installer** (WiX/Burn) log,
   > *not* a stream log — don't attach it.
 - `-LogPath` accepts globs, but the collector posts **every** match, so prefer selecting the single
@@ -31,7 +37,8 @@ Both are Qt apps that write a **per-run** diagnostic log into `%TEMP%`:
 ## Moonlight-Qt client (Linux — Bazzite couch box)
 - **Flatpak:** `~/.var/app/com.moonlight_stream.Moonlight/` (and `flatpak run … 2> moonlight.log`).
 - **Native:** `~/.config/Moonlight Game Streaming Project/`.
-- Pass the file(s) with `--log` to `asl-session.sh`.
+- With `-Role moonlight` the collector auto-detects `*.log` under those dirs; pass the file(s)
+  with `--log` to `asl-session.sh` to override or if your install differs.
 
 ## Artemis client (Android) — agent-less
 - In-app **Export/Share logs**, or `adb logcat -d -s Moonlight:* Artemis:* > artemis-log.txt`.
