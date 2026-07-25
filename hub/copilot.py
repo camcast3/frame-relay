@@ -16,6 +16,7 @@ backends never changes what data Copilot sees.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from typing import Any
 
@@ -31,6 +32,40 @@ ERROR_KEYWORDS = (
     "packet loss", "could not", "unable", "denied", "refused", "crash", "fatal",
     "not supported", "unsupported", "decoder", "hdr", "codec",
 )
+
+# Lines that match ERROR_KEYWORDS but are normal, expected output. Apollo's encoder probe
+# deliberately provokes failures ("you can safely ignore those errors") and both sides log
+# plenty of informational codec/HDR/decoder chatter; surfacing it drowns the real signal.
+BENIGN_LOG_PATTERNS = (
+    "testing for available encoders",
+    "ignore any errors mentioned above",
+    "is not supported on this gpu",
+    "nvapi_initialize() failed",
+    "decoder guids reported as supported",
+    "video decoder chosen",
+    "decoder texture access",
+    "color coding:",
+    "display is hdr:",
+    "client dynamicrange:",
+    "hdr_state",
+    "changing hdr states",
+    "using windows recommended modes",
+    # Artemis probes several optional command endpoints that Apollo does not implement;
+    # the resulting 404s are expected on every single connect.
+    "qnetworkreply::contentnotfounderror",
+    "servercommandmanager::fetchavailablecommands",
+    "reference frame invalidation is not supported",
+    # Request/URL debug lines match on query parameters such as hdrMode=, not on real errors.
+    "nvhttp::openconnection",
+    "executing request:",
+)
+
+# Client-side audio trouble. Moonlight/Artemis logs out-of-sequence audio and enters a
+# "fast audio recovery" mode when audio packets are lost or arrive reordered - the usual
+# cause of brief audio dropouts while video still looks fine.
+AUDIO_OOS_RE = re.compile(r"OOS audio data", re.I)
+AUDIO_RECOVERY_RE = re.compile(r"fast audio recovery", re.I)
+OPUS_CHANNELS_RE = re.compile(r"Opus initialized:.*?(\d+)\s+channels", re.I)
 
 
 # --- context ------------------------------------------------------------------
@@ -75,8 +110,11 @@ def _log_findings(text: str) -> list[str]:
     hits: list[str] = []
     for line in text.splitlines():
         low = line.lower()
-        if any(k in low for k in ERROR_KEYWORDS):
-            hits.append(line.strip())
+        if not any(k in low for k in ERROR_KEYWORDS):
+            continue
+        if any(b in low for b in BENIGN_LOG_PATTERNS):
+            continue
+        hits.append(line.strip())
     # de-dupe while preserving order, cap the list
     seen, out = set(), []
     for h in hits:
@@ -84,6 +122,40 @@ def _log_findings(text: str) -> list[str]:
             seen.add(h)
             out.append(h)
     return out[:15]
+
+
+def _audio_findings(host_log: str, client_log: str) -> list[str]:
+    """Detect audio dropouts, which show up as lost/reordered audio packets on the client.
+
+    Video degrades gracefully (Apollo protects the video stream), so audio is usually the
+    first thing to break on a marginal link - and the host log stays completely clean.
+    """
+    findings: list[str] = []
+
+    oos = len(AUDIO_OOS_RE.findall(client_log))
+    recovery = len(AUDIO_RECOVERY_RE.findall(client_log))
+    if oos:
+        findings.append(
+            f"Client reported out-of-sequence audio {oos}x (entered fast audio recovery "
+            f"{recovery}x) - audio packets are being lost or reordered on the path to the "
+            f"client, which is heard as brief audio dropouts. A single event right after "
+            f"connect is normal start-up resync; repeated events during a stream are not."
+        )
+
+    chans = OPUS_CHANNELS_RE.search(host_log)
+    if chans:
+        try:
+            n = int(chans.group(1))
+        except ValueError:
+            n = 0
+        if n > 2:
+            findings.append(
+                f"Host negotiated {n}-channel (surround) Opus audio. That is several times "
+                f"the bitrate of stereo and the client must decode and downmix it; on a "
+                f"handheld or phone this alone can cause audio dropouts. The client chooses "
+                f"this - set the client's audio configuration to stereo to rule it out."
+            )
+    return findings
 
 
 def analyze_signals(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -127,6 +199,7 @@ def analyze_signals(ctx: dict[str, Any]) -> dict[str, Any]:
 
     host_findings = _log_findings(ctx.get("host_log_tail", ""))
     client_findings = _log_findings(ctx.get("client_log_tail", ""))
+    findings += _audio_findings(ctx.get("host_log_tail", ""), ctx.get("client_log_tail", ""))
     return {
         "network": findings,
         "host_log": host_findings,
@@ -184,6 +257,13 @@ def _mock(ctx: dict[str, Any], question: str | None) -> str:
     lines.append("\n**Likely focus:**")
     if any("roam" in n for n in net):
         lines.append("- Wi-Fi roaming mid-stream. Lock the client to one AP/band or use Ethernet, then re-test.")
+    elif any("out-of-sequence audio" in n for n in net):
+        lines.append("- Audio packet loss on the path to the client. Check the client's link "
+                     "(Wi-Fi vs Ethernet), lower the bitrate so bursts stop crowding out audio, "
+                     "and confirm the client is set to stereo.")
+    elif any("surround) Opus" in n for n in net):
+        lines.append("- Surround audio on a client that must downmix it. Set the client's audio "
+                     "configuration to stereo and re-test.")
     elif any("loss" in n or "jitter" in n for n in net):
         lines.append("- Network path quality. Re-run iperf3, lower bitrate ~15%, and compare a wired run.")
     elif any("Weak Wi-Fi" in n for n in net):
