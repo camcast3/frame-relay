@@ -101,6 +101,31 @@ const ASL = (() => {
     }
   }
 
+  function applyLogView() {
+    const wrap = document.getElementById("wrap");
+    const stack = document.getElementById("stack");
+    const logs = document.querySelector(".logs");
+    if (logs && stack) logs.classList.toggle("stacked", stack.checked);
+    for (const id of ["host-log", "client-log"]) {
+      const pre = document.getElementById(id);
+      if (pre && wrap) pre.classList.toggle("nowrap", !wrap.checked);
+    }
+    try {
+      if (wrap) localStorage.setItem("asl.wrap", wrap.checked ? "1" : "0");
+      if (stack) localStorage.setItem("asl.stack", stack.checked ? "1" : "0");
+    } catch (e) { /* private mode: preference just won't persist */ }
+  }
+
+  function restoreLogView() {
+    try {
+      const w = localStorage.getItem("asl.wrap"), s = localStorage.getItem("asl.stack");
+      const wrap = document.getElementById("wrap"), stack = document.getElementById("stack");
+      if (wrap && w !== null) wrap.checked = w === "1";
+      if (stack && s !== null) stack.checked = s === "1";
+    } catch (e) { /* ignore */ }
+    applyLogView();
+  }
+
   function wireSyncScroll() {
     const h = document.getElementById("host-log"), c = document.getElementById("client-log");
     if (!h || !c) return;
@@ -209,6 +234,88 @@ const ASL = (() => {
   }
 
   // --- live refresh while a capture is still running ---------------------------
+  function renderNetTests(tests) {
+    const tb = document.getElementById("nettest-tbody"); if (!tb) return;
+    if (Number(tb.dataset.count || "0") === tests.length) return;   // nothing new
+    tb.dataset.count = String(tests.length);
+    tb.innerHTML = "";
+    if (!tests.length) return;   // keep the server-rendered "how to run it" hint
+    for (const t of tests) {
+      const tr = document.createElement("tr");
+      const jitter = t.jitter_ms != null ? t.jitter_ms + " ms" : "— ms";
+      const loss = t.loss_pct != null ? t.loss_pct + "%" : "—%";
+      const cells = [
+        [t.tool || "—", ""], [t.direction || "—", ""], [t.bitrate_target || "—", ""],
+        [t.throughput_mbps != null ? String(t.throughput_mbps) : "—", ""],
+        [jitter, t.jitter_ms > 1 ? "warn" : ""], [loss, t.loss_pct > 5 ? "warn" : ""],
+      ];
+      for (const [txt, cls] of cells) {
+        const td = document.createElement("td"); if (cls) td.className = cls;
+        td.textContent = txt; tr.appendChild(td);
+      }
+      tb.appendChild(tr);
+    }
+  }
+
+  function renderLinkSummary(samples) {
+    const tb = document.getElementById("link-summary-tbody"); if (!tb) return;
+    const count = document.getElementById("link-count");
+    if (count) count.textContent = samples.length;
+    tb.innerHTML = "";
+    if (!samples.length) {
+      const tr = document.createElement("tr"), td = document.createElement("td");
+      td.colSpan = 7; td.className = "muted";
+      td.textContent = "No link samples yet — the collectors post them every ~10-15s.";
+      tr.appendChild(td); tb.appendChild(tr); return;
+    }
+    // One row per source: 400 raw rows answer no question, but "was it Wi-Fi, how strong, and
+    // did it roam?" is the whole point of sampling the link.
+    for (const src of ["host", "client"]) {
+      const rows = samples.filter(s => s.source === src);
+      if (!rows.length) continue;
+      const last = rows[rows.length - 1];
+      const rssis = rows.map(s => s.rssi).filter(v => v != null);
+      const aps = [...new Set(rows.map(s => s.bssid).filter(Boolean))];
+      const nets = [...new Set(rows.map(s => s.ssid).filter(Boolean))];
+      const bands = [...new Set(rows.map(s => (s.band || "") + (s.channel ? "/" + s.channel : ""))
+                                   .filter(Boolean))];
+      const wifi = rows.some(s => s.link_type === "wifi");
+
+      let rssiTxt = "—", rssiCls = "";
+      if (rssis.length) {
+        const mn = Math.min(...rssis), mx = Math.max(...rssis);
+        const avg = rssis.reduce((a, b) => a + b, 0) / rssis.length;
+        rssiTxt = `${mn} / ${avg.toFixed(0)} / ${mx} dBm`;
+        if (mn < -70) rssiCls = "warn";
+      }
+      let apTxt = aps.length ? String(aps.length) : (wifi ? "n/a" : "—");
+      let apCls = "";
+      if (aps.length > 1) { apTxt = aps.length + " (roamed)"; apCls = "warn"; }
+
+      const tr = document.createElement("tr");
+      const cells = [
+        [src, ""], [last.link_type || "—", ""], [nets.join(", ") || "—", ""],
+        [bands.join(", ") || "—", ""], [rssiTxt, rssiCls], [apTxt, apCls],
+        [String(rows.length), "muted"],
+      ];
+      for (const [txt, cls] of cells) {
+        const td = document.createElement("td"); if (cls) td.className = cls;
+        td.textContent = txt; tr.appendChild(td);
+      }
+      tb.appendChild(tr);
+    }
+    // Windows 11 24H2+ withholds the BSSID unless Location Services are on, which silently
+    // disables roam detection - say so rather than showing a blank AP column.
+    const wifiNoBssid = samples.some(s => s.link_type === "wifi" && !s.bssid);
+    if (wifiNoBssid) {
+      const tr = document.createElement("tr"), td = document.createElement("td");
+      td.colSpan = 7; td.className = "muted small";
+      td.textContent = "No BSSID reported for a Wi-Fi link, so AP-roam detection is off. "
+        + "On Windows 11 enable Settings > Privacy & security > Location on that machine.";
+      tr.appendChild(td); tb.appendChild(tr);
+    }
+  }
+
   function renderLinkRows(samples) {
     const tb = document.getElementById("link-tbody"); if (!tb) return;
     tb.innerHTML = "";
@@ -250,6 +357,8 @@ const ASL = (() => {
     updateLogPane("host-log", b.host_logs || []);
     updateLogPane("client-log", b.client_logs || []);
     renderLinkRows(b.link_samples || []);
+    renderLinkSummary(b.link_samples || []);
+    renderNetTests(b.net_tests || []);
     const raw = document.getElementById("bundle-data");
     if (raw) { raw.textContent = JSON.stringify(b.link_samples || []); drawRssiChart(); }
     const s = b.session || {};
@@ -296,10 +405,12 @@ const ASL = (() => {
   }
 
   function initSessionPage() {
-    applyLogFilter(); wireSyncScroll(); wireChat(); wireArtifactUpload();
+    restoreLogView(); applyLogFilter(); wireSyncScroll(); wireChat(); wireArtifactUpload();
     wirePasteLog(); wireManualLink(); drawRssiChart(); startLiveRefresh();
+    const raw = document.getElementById("bundle-data");
+    if (raw) { try { renderLinkSummary(JSON.parse(raw.textContent) || []); } catch (e) {} }
   }
 
   return { wireNewSessionForm, initIndexPage, initSessionPage, saveOutcome, saveNotes, stopSession,
-           deleteSession, analyze, applyLogFilter };
+           deleteSession, analyze, applyLogFilter, applyLogView };
 })();

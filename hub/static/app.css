@@ -18,6 +18,9 @@ h1 { font-size: 22px; } h2 { font-size: 17px; margin: 0 0 10px; } h3 { font-size
 .brand { font-weight: 600; color: var(--fg); }
 .topbar nav { display: flex; gap: 16px; align-items: center; }
 main { max-width: 1200px; margin: 0 auto; padding: 20px; }
+/* Log lines run long (Apollo/Artemis routinely exceed 120 chars), so give the side-by-side
+   view the full width of a wide monitor instead of boxing it into the reading column. */
+@media (min-width: 1400px) { main { max-width: 1640px; } }
 
 .btn { display: inline-block; background: var(--panel2); color: var(--fg); border: 1px solid var(--line);
   border-radius: 7px; padding: 7px 12px; cursor: pointer; font-size: 14px; }
@@ -50,14 +53,24 @@ table.grid tbody tr:hover { background: var(--panel2); }
 
 .logs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 900px) { .logs { grid-template-columns: 1fr; } }
+/* Stack the panes full-width when the operator wants max line length for one log at a time. */
+.logs.stacked { grid-template-columns: 1fr; }
 .log { background: #0b0e12; border: 1px solid var(--line); border-radius: 8px; padding: 10px;
-  height: 340px; overflow: auto; white-space: pre; font-size: 12.5px; margin: 0; }
+  height: 55vh; min-height: 300px; overflow: auto; font-size: 12.5px; margin: 0;
+  resize: vertical; tab-size: 4;
+  /* Wrap by default: long lines were previously cut off behind a horizontal scrollbar. */
+  white-space: pre-wrap; overflow-wrap: anywhere; }
+.log.nowrap { white-space: pre; overflow-wrap: normal; }
 .log .err { color: var(--err); }
 .log-tools { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .log-tools input[type=text], #log-filter { background: var(--panel2); border: 1px solid var(--line); color: var(--fg); border-radius: 6px; padding: 5px 8px; }
 
 .check { display: inline-flex; align-items: center; gap: 6px; }
 .warn { color: var(--warn); }
+.link-detail { margin-top: 10px; }
+.link-detail summary { cursor: pointer; }
+.link-detail > table { margin-top: 8px; display: block; max-height: 320px; overflow: auto; }
+#link-summary td, #link-summary th { white-space: nowrap; }
 
 .form label { display: block; margin: 10px 0; }
 .form .row { display: flex; gap: 12px; flex-wrap: wrap; }

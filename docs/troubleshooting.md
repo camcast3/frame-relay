@@ -12,6 +12,7 @@ troubleshooting docs.
 | 30–60% loss on one client only | **MTU** mismatch | Try a lower host MTU (e.g. 1428) for that guest |
 | No/black video, decoder errors | Codec/HDR unsupported by client | Client log flags (HEVC/AV1/HDR); try HEVC SDR first |
 | Can't connect remotely | NAT / port forwarding | Run **MIST** (Moonlight Internet Streaming Tester); attach findings to notes |
+| Network test recorded nothing | **iperf3 not installed**, or the result was never posted | `iperf3` must be on **both** machines (`winget install ar51an.iPerf3` / `apt install iperf3`) and `iperf3 -s` running on the host; the runner now prints where it posted, or why it couldn't |
 | Can't pair / web UI | Credentials / firewall | Apollo log pairing lines; `sunshine --creds <user> <pass>` |
 | Stuck on H.264, no HEVC/AV1 offered | **Encoder ran on a software adapter** — no hardware GPU available to the captured display | Host log: `Found H.264 encoder: libx264 [software]`. See [No hardware encoder / no AV1](#no-hardware-encoder--no-av1) below |
 | Audio dropouts / stuttering audio on the client | **7.1 surround** requested by the client — 8-channel Opus the client must decode and downmix | Host log: `Opus initialized: 48 kHz, 8 channels, 2048 kbps`. See [Audio dropouts](#audio-dropouts) below |

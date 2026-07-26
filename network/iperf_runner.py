@@ -5,8 +5,9 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
+import sys
 import urllib.request
-from typing import Any
+from typing import Any, Optional
 
 
 def _format_bitrate(value: Any) -> str | None:
@@ -87,6 +88,25 @@ def run_iperf3(
     return parse_iperf3_json(proc.stdout)
 
 
+def newest_active_session(hub_url: str) -> Optional[str]:
+    """Id of the most recent session that is still running, so a test run needs no id.
+
+    Mirrors how the collectors resolve a session: the operator is already streaming, so the
+    session they mean is the active one.
+    """
+    url = f"{hub_url.rstrip('/')}/api/sessions"
+    try:
+        with urllib.request.urlopen(url, timeout=15) as response:
+            sessions = json.loads(response.read().decode("utf-8"))
+    except Exception as exc:  # noqa: BLE001 - a missing hub shouldn't crash the test run
+        print(f"could not list sessions on {hub_url}: {exc}")
+        return None
+    for s in sessions:                      # the API returns newest first
+        if str(s.get("status", "")).lower() == "active":
+            return s.get("id")
+    return None
+
+
 def post_to_hub(hub_url: str, session_id: str, result: dict[str, Any]) -> None:
     """POST an iperf3 result to the hub nettests endpoint."""
     payload = {"tool": "iperf3", **result}
@@ -107,14 +127,46 @@ def main() -> None:
     parser.add_argument("--host", required=True, help="iperf3 server host")
     parser.add_argument("--duration", type=int, default=60)
     parser.add_argument("--bitrate", default="50M")
-    parser.add_argument("--hub-url")
-    parser.add_argument("--session-id")
+    parser.add_argument("--hub-url", help="post the result to this hub")
+    parser.add_argument("--session-id",
+                        help="session to attach the result to; with --hub-url and no id, the "
+                             "newest active session is used")
     args = parser.parse_args()
 
-    result = run_iperf3(args.host, duration=args.duration, bitrate=args.bitrate)
-    if args.hub_url and args.session_id:
-        post_to_hub(args.hub_url, args.session_id, result)
+    # Posting used to require both flags and silently did nothing otherwise, so a run could look
+    # successful while the hub never received it.
+    if args.session_id and not args.hub_url:
+        parser.error("--session-id needs --hub-url to post the result")
+
+    session_id = args.session_id
+    if args.hub_url and not session_id:
+        session_id = newest_active_session(args.hub_url)
+        if not session_id:
+            parser.error("no active session on the hub to attach to; start one or pass "
+                         "--session-id")
+        print(f"attaching result to the newest active session: {session_id}")
+
+    try:
+        result = run_iperf3(args.host, duration=args.duration, bitrate=args.bitrate)
+    except RuntimeError as exc:
+        # A stack trace here buries the one line that matters (usually "iperf3 is not installed"
+        # or "connection refused" because nothing is listening on the host).
+        print(f"error: {exc}", file=sys.stderr)
+        print("hint: install iperf3 on BOTH machines (winget install ar51an.iPerf3, or "
+              "apt/dnf install iperf3) and run `iperf3 -s` on the host first.", file=sys.stderr)
+        raise SystemExit(1)
+
     print(json.dumps(result, indent=2, sort_keys=True))
+
+    if args.hub_url and session_id:
+        try:
+            post_to_hub(args.hub_url, session_id, result)
+        except Exception as exc:  # noqa: BLE001
+            print(f"error: could not post to the hub: {exc}", file=sys.stderr)
+            raise SystemExit(1)
+        print(f"posted to {args.hub_url.rstrip('/')}/sessions/{session_id}")
+    else:
+        print("not posted to a hub (pass --hub-url to record this against a session)")
 
 
 if __name__ == "__main__":

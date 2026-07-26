@@ -144,12 +144,13 @@ Same as local, with three differences:
    collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source host -Watch -WgSubnet 192.168.2.0/24
    ```
 
-**iperf3 over the tunnel** (port 5201; open it to the WG VLAN on the host):
+**iperf3 over the tunnel** (port 5201; open it to the WG VLAN on the host). **iperf3 must be
+installed on both machines** — that is the usual reason a test records nothing:
 ```bash
 # host:
 iperf3 -s
-# remote client (via WG):
-python network/iperf_runner.py --host <host-ip-over-wg> --hub-url HUB --session-id <id>
+# remote client (via WG) — omit --session-id and it attaches to the newest active session:
+python network/iperf_runner.py --host <host-ip-over-wg> --hub-url HUB
 ```
 
 ---

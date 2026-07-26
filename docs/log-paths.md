@@ -74,7 +74,10 @@ Captured automatically by the collectors (see `collectors/asl_collector/linkinfo
 - Android: entered manually (agent-less).
 
 ## Network test
-- iperf3 (sanctioned by the Apollo docs), port **5201** TCP/UDP:
+- iperf3 (sanctioned by the Apollo docs), port **5201** TCP/UDP. **Install it on both machines**
+  (`winget install ar51an.iPerf3`, or `apt`/`dnf install iperf3`) — a missing binary is the usual
+  reason a run records nothing:
   - host: `iperf3 -s`
-  - client: `iperf3 -c <host> -t 60 -u -R -b <bitrate>`
+  - client: `python network/iperf_runner.py --host <host-ip> --hub-url <hub>`
+    (omit `--session-id` and it attaches to the newest active session)
 - Good path: **loss < 5%, jitter < 1 ms**. Driven by `network/iperf_runner.py`.

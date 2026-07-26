@@ -35,6 +35,8 @@
       <div class="log-tools">
         <input id="log-filter" placeholder="filter…" oninput="ASL.applyLogFilter()">
         <label class="check"><input type="checkbox" id="hl" checked onchange="ASL.applyLogFilter()"> highlight errors</label>
+        <label class="check"><input type="checkbox" id="wrap" checked onchange="ASL.applyLogView()"> wrap</label>
+        <label class="check"><input type="checkbox" id="stack" onchange="ASL.applyLogView()"> stack</label>
         <label class="check"><input type="checkbox" id="sync" checked> sync scroll</label>
       </div>
     </div>
@@ -56,35 +58,45 @@
     <section class="card">
       <h2>Link / access point</h2>
       <div id="rssi-chart"></div>
-      <table class="grid small">
-        <thead><tr><th>Time</th><th>Src</th><th>Type</th><th>SSID</th><th>BSSID (AP)</th>
-          <th>Band/Ch</th><th>RSSI</th><th>Rate</th></tr></thead>
-        <tbody id="link-tbody">
-        {% for l in b.link_samples %}
-          <tr><td class="mono">{{ (l.sampled_at or "")[11:19] }}</td><td>{{ l.source }}</td>
-            <td>{{ l.link_type or "—" }}</td><td>{{ l.ssid or "—" }}</td>
-            <td class="mono bssid">{{ l.bssid or "—" }}</td>
-            <td>{{ l.band or "" }}{% if l.channel %}/{{ l.channel }}{% endif %}</td>
-            <td>{{ l.rssi if l.rssi is not none else (l.signal_pct ~ '%' if l.signal_pct is not none else '—') }}</td>
-            <td>{{ l.link_speed or "—" }}</td></tr>
-        {% endfor %}
-        {% if not b.link_samples %}<tr><td colspan="8" class="muted">No link samples.</td></tr>{% endif %}
-        </tbody>
+      <table class="grid small" id="link-summary">
+        <thead><tr><th>Source</th><th>Link</th><th>Network</th><th>Band/Ch</th>
+          <th>RSSI min/avg/max</th><th>APs</th><th>Samples</th></tr></thead>
+        <tbody id="link-summary-tbody"></tbody>
       </table>
+      <details class="link-detail">
+        <summary class="muted small">All samples (<span id="link-count">{{ b.link_samples|length }}</span>)</summary>
+        <table class="grid small">
+          <thead><tr><th>Time</th><th>Src</th><th>Type</th><th>SSID</th><th>BSSID (AP)</th>
+            <th>Band/Ch</th><th>RSSI</th><th>Rate</th></tr></thead>
+          <tbody id="link-tbody">
+          {% for l in b.link_samples %}
+            <tr><td class="mono">{{ (l.sampled_at or "")[11:19] }}</td><td>{{ l.source }}</td>
+              <td>{{ l.link_type or "—" }}</td><td>{{ l.ssid or "—" }}</td>
+              <td class="mono bssid">{{ l.bssid or "—" }}</td>
+              <td>{{ l.band or "" }}{% if l.channel %}/{{ l.channel }}{% endif %}</td>
+              <td>{{ l.rssi if l.rssi is not none else (l.signal_pct ~ '%' if l.signal_pct is not none else '—') }}</td>
+              <td>{{ l.link_speed or "—" }}</td></tr>
+          {% endfor %}
+          {% if not b.link_samples %}<tr><td colspan="8" class="muted">No link samples.</td></tr>{% endif %}
+          </tbody>
+        </table>
+      </details>
     </section>
 
     <section class="card">
       <h2>Network tests (iperf3)</h2>
       <table class="grid small">
         <thead><tr><th>Tool</th><th>Direction</th><th>Target</th><th>Thruput</th><th>Jitter</th><th>Loss</th></tr></thead>
-        <tbody>
+        <tbody id="nettest-tbody">
         {% for t in b.net_tests %}
           <tr><td>{{ t.tool }}</td><td>{{ t.direction or "—" }}</td><td>{{ t.bitrate_target or "—" }}</td>
             <td>{{ t.throughput_mbps or "—" }}</td>
             <td class="{{ 'warn' if t.jitter_ms and t.jitter_ms > 1 else '' }}">{{ t.jitter_ms if t.jitter_ms is not none else "—" }} ms</td>
             <td class="{{ 'warn' if t.loss_pct and t.loss_pct > 5 else '' }}">{{ t.loss_pct if t.loss_pct is not none else "—" }}%</td></tr>
         {% endfor %}
-        {% if not b.net_tests %}<tr><td colspan="6" class="muted">No network tests.</td></tr>{% endif %}
+        {% if not b.net_tests %}<tr><td colspan="6" class="muted">No network tests yet — run
+          <code>python network/iperf_runner.py --host &lt;host-ip&gt; --hub-url &lt;hub&gt; --session-id {{ s.id }}</code>
+          with <code>iperf3 -s</code> running on the host.</td></tr>{% endif %}
         </tbody>
       </table>
     </section>
