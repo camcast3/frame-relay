@@ -40,6 +40,10 @@ Pick the deployment that matches how your devices connect:
 
 Set `ASL_COPILOT_BACKEND` / `ASL_COPILOT_TOKEN` in `.env` if you want real Copilot analysis.
 
+If you want on-demand host/client screenshots from the active session page, also set the same
+`ASL_SCREENSHOT_TOKEN` on the hub, the Apollo host, and every collector-capable client before
+starting their collectors. The operator flow is in [first-multi-client-test.md](./first-multi-client-test.md).
+
 Below, `HUB` = the URL from this step (e.g. `http://192.168.86.246:8080`).
 
 ---

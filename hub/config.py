@@ -28,6 +28,13 @@ COPILOT_TOKEN = os.environ.get("ASL_COPILOT_TOKEN") or os.environ.get("GITHUB_TO
 # Path to the copilot binary for the "cli" backend.
 COPILOT_CLI_PATH = os.environ.get("ASL_COPILOT_CLI_PATH", "copilot")
 
+# Shared-secret auth for the optional screenshot-request workflow.
+SCREENSHOT_TOKEN = os.getenv("ASL_SCREENSHOT_TOKEN", "").strip()
+# Maximum accepted PNG size for screenshot-request uploads.
+SCREENSHOT_MAX_UPLOAD_BYTES = int(
+    os.environ.get("ASL_SCREENSHOT_MAX_UPLOAD_BYTES", str(25 * 1024 * 1024))
+)
+
 # How many trailing log lines per source to include in a Copilot prompt.
 COPILOT_LOG_TAIL_LINES = int(os.environ.get("ASL_COPILOT_LOG_TAIL_LINES", "400"))
 

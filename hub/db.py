@@ -142,6 +142,20 @@ CREATE TABLE IF NOT EXISTS artifacts (
 );
 CREATE INDEX IF NOT EXISTS idx_artifacts_session ON artifacts(session_id);
 
+CREATE TABLE IF NOT EXISTS screenshot_requests (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id    TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    target_source TEXT NOT NULL,                    -- host | client
+    status        TEXT NOT NULL DEFAULT 'pending', -- pending | completed | failed
+    requested_at  TEXT NOT NULL,
+    completed_at  TEXT,
+    machine       TEXT,
+    artifact_id   INTEGER REFERENCES artifacts(id) ON DELETE SET NULL,
+    error         TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_screenshot_requests_session_status_source
+    ON screenshot_requests(session_id, status, target_source);
+
 CREATE TABLE IF NOT EXISTS chat_messages (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id  TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,

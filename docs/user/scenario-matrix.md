@@ -1,8 +1,8 @@
 # Scenario matrix (template)
 
 Systematically walk local → remote and Ethernet → Wi-Fi so limitations are reproducible.
-Create one hub session per row; the presets live in `network/scenarios.py`. When comparing
-clients, reuse an explicit comparison/test-case label for the matched runs.
+Create one hub session per row and reuse an explicit comparison/test-case label for matched runs
+that should compare cleanly.
 
 | # | Network path      | Client link      | Codec | Res/FPS   | Bitrate | HDR | Expected | Result | Session id |
 |---|-------------------|------------------|-------|-----------|---------|-----|----------|--------|------------|

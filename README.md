@@ -1,120 +1,63 @@
 # Apollo Streaming Lab
 
-A troubleshooting + test harness for **Apollo/Sunshine** (host) ↔ **Moonlight/Artemis**
-(clients) game streaming, covering **local and remote** scenarios.
+Apollo Streaming Lab helps you run repeatable **Apollo/Sunshine** streaming tests and keep the
+results in one place. Each session can combine:
+- the **Apollo host log**,
+- the **Moonlight/Artemis client log** or manual Xbox/Android evidence,
+- **requested vs effective** stream settings,
+- **Wi-Fi/link samples** and **iperf3** results,
+- **screenshots, notes, and outcome**, and
+- optional **Copilot analysis** to help explain what happened.
 
-Each test is a **session** that links, in one place:
-- the **host** (Apollo) log and the **client** (Moonlight/Artemis) log, shown **side-by-side**,
-- the **scenario/config** (network path, codec, resolution, fps, bitrate, HDR, encoder knobs),
-- the **stream identity** (Apollo application preset, game/process, client app/platform/version)
-  and **client-requested vs effective** settings,
-- a structured **HDR pipeline**, manual visual assessment, and matched Moonlight-vs-Artemis
-  comparisons,
-- Windows host **display-topology evidence** from `QueryDisplayConfig` before/during/after the
-  session, validating the virtual target, mode, refresh rate, HDR state, and topology restoration,
-- **network diagnostics** (iperf3),
-- **auto-detected link/AP info** — Ethernet vs Wi-Fi, and on Wi-Fi the access point
-  (SSID + **BSSID**), band/channel/RSSI/rate — **sampled through the session** to catch
-  mid-stream **Wi-Fi roaming / signal dips**,
-- your **notes / experience**, and
-- an on-demand **Copilot analysis** that deciphers what happened.
+Use it when you want to compare clients, prove whether a problem is the network versus the decoder
+or HDR path, or keep a clean record of LAN/WireGuard streaming tests.
 
-The hub is viewable from **any device** (PC / TV / phone browser) over your LAN/WireGuard or tailnet.
+## Start Here
 
-## Architecture
+If you are new to the project, begin with
+**[First multi-client test](./docs/user/first-multi-client-test.md)**. It is the canonical
+zero-context walkthrough from hub startup to a finished matched comparison, including the
+authenticated screenshot flow and Xbox/manual capture.
 
-```
-  Apollo host (Windows)          Clients                         Hub (Docker on watchtower)
-  ┌───────────────────┐   ┌─────────────────────────┐           ┌───────────────────────────┐
-  │ Start-AslSession  │   │ Linux Moonlight (.sh)    │  LAN /    │ hub app (FastAPI + SQLite)│
-  │  → sunshine.log   │   │ Windows Moonlight (.ps1) │ WireGuard │  side-by-side logs, RSSI  │
-  │  → link/AP samples│──▶│ Android/Xbox (manual UI) │──or──────▶│  chart, notes, Copilot    │
-  └───────────────────┘   └─────────────────────────┘  Tailscale└───────────────────────────┘
-```
+## Fastest LAN / Docker start
 
-Three cooperating parts:
-- **`hub/`** — FastAPI app: JSON API + server-rendered Jinja UI + SQLite + Copilot analyzer.
-- **`collectors/`** — the stdlib-only capture agent (`python -m asl_collector`) plus Windows
-  (`.ps1`) and Linux (`.sh`) launchers. Runs on the machines under test and POSTs logs, link
-  samples, and net tests to the hub. Android/Xbox are captured manually via the hub UI.
-- **`network/`** — iperf3 runner/parser + per-network-path scenario presets.
-
-The hub is reached either over your **LAN / WireGuard** (recommended) or **tailnet-only** behind
-a Tailscale sidecar with no published LAN ports — see [docs/deploy.md](./docs/deploy.md).
-
-## Repo layout
-```
-hub/                 FastAPI hub: API, server-rendered UI, SQLite, Copilot analyzer
-  routers/           sessions, ingest (logs/links/nettests/artifacts), analysis
-  templates/ static/ side-by-side log view, RSSI/roam chart, notes, Copilot panel + chat
-collectors/
-  asl_collector/     shared, stdlib-only lib: link detection, log slicing/discovery, hub client, netmon
-  windows/           Start-AslSession.ps1  (Apollo host or Windows Moonlight/Artemis)
-  linux/             asl-session.sh        (Linux Moonlight)
-network/             iperf3 runner/parser + scenario presets
-deploy/              Tailscale serve config (serve.json) + ACL snippet
-docs/                all documentation (see below)
-samples/ tests/      sample tool output + pytest suite
-Dockerfile  docker-compose.yaml  docker-compose.lan.yaml  .env.example
-```
-
-## Quickstart — run the hub locally (dev)
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-# Reachable only from this machine (localhost):
-.\.venv\Scripts\python.exe -m uvicorn hub.main:app --reload --port 8080   # http://127.0.0.1:8080
-# Reachable from other devices (binds 0.0.0.0:8080 via config):
-.\.venv\Scripts\python.exe -m hub                                          # http://<this-host-ip>:8080
-```
-> A bare `uvicorn hub.main:app` binds to **127.0.0.1 only** — use `python -m hub` (or add
-> `--host 0.0.0.0`) to reach it from other devices, and open the port in your host firewall.
-> Running it on the host this way is a supported deploy (**Option C** in
-> [docs/deploy.md](./docs/deploy.md)); for always-on use a Docker deploy is better.
-
-## Capture a session (in brief)
-1. Leave the **host** collector running once in **watch mode** — it needs no session id and picks
-   up whatever session starts, then waits for the next one:
-   `Start-AslSession.ps1 -HubUrl HUB -Source host -Watch`
-2. The **client dictates the session**: start it with `--create` and the watching host joins
-   within seconds, back-filling its log from the session's start time.
-3. Optionally run an iperf3 test (`network/iperf_runner.py`).
-4. Stop the client, add **notes**, set the **outcome**, then click **Analyze**.
-
-> Prefer to drive from the host? That still works: create the session there (`-Create`) or in the
-> UI, and each client **attaches automatically** (no id to copy — it auto-picks the lone awaiting
-> session, or pass `--attach-latest`). Either way the log is **auto-detected from
-> `--source`/`--role`** (override with `--log`), and `-LaunchClient` / `--launch-client` finds the
-> client app for that role so the collector can wrap it and capture its stderr live.
-
-While capturing, collectors **post logs + link samples every ~30s** (`--post-interval`), so the
-session page updates **live** (both the session page and the sessions list auto-refresh until the
-session is stopped). The **host** collector also fills blank session metadata **live during** the
-capture (codec/resolution/fps/bitrate/HDR from the log; client IP + network path from the live
-connection) and never overrides values you set yourself. For a live **client** log, let the
-collector **wrap** Artemis/Moonlight (`-LaunchClient`, which finds the app for `--role`) so it
-captures the app's real-time stderr — its `%TEMP%` log file is buffered and only flushes in bursts.
-
-For a controlled client comparison, give matched runs the same **comparison/test-case label** and
-hold the host, Apollo preset/game, requested settings, and network path constant. The comparison
-page flags mismatches before showing Moonlight/Artemis HDR evidence side by side. Log evidence and
-screenshots can reveal negotiation/fallback and obvious visual differences, but objective color
-accuracy requires calibrated external capture hardware.
-
-Full walkthrough (local vs remote WireGuard): [docs/host-client-setup.md](./docs/host-client-setup.md).
-
-## Documentation
-All docs live in [`docs/`](./docs/):
-- **[Host & client setup](./docs/host-client-setup.md)** — wire up host + hub + clients; per-test capture (local & remote).
-- **[Deploying the hub](./docs/deploy.md)** — LAN/WireGuard, tailnet-only, or directly on a host; plus `.env` config.
-- **[Agent-less capture (Android & Xbox)](./docs/agentless-capture.md)** — manual capture via the hub UI.
-- **[Copilot analysis](./docs/copilot-analysis.md)** — the `mock`/`cli`/`sdk` backends and what the offline analyzer detects.
-- **[Log paths](./docs/log-paths.md)** · **[Scenario matrix](./docs/scenario-matrix.md)** · **[Troubleshooting](./docs/troubleshooting.md)**
-
-## Testing
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q
+git clone https://github.com/camcast3/apollo-streaming-lab.git
+cd apollo-streaming-lab
+Copy-Item .env.example .env
+docker compose -f docker-compose.lan.yaml up -d --build
 ```
 
-> Data lives under `data/` (gitignored); secrets go in `.env` (gitignored). Ensure all
-> machines run **NTP** so host/client logs line up.
+Then open `http://<hub-host>:8080` from the devices that will capture or review sessions.
+
+## What you use during a test
+
+- **Hub** — browser UI and database for sessions, comparisons, artifacts, notes, and Copilot
+  analysis.
+- **Host collector** — Windows script beside Apollo that uploads the host log, classifies the
+  client's network path, and records display/link evidence.
+- **Client capture** — Windows/Linux collectors for Moonlight or Artemis, or manual entry for
+  Xbox/Android when no collector can run.
+
+## User guides
+
+- **[First multi-client test](./docs/user/first-multi-client-test.md)** — canonical start-to-
+  finish walkthrough; begin here.
+- **[Host & client setup](./docs/user/host-client-setup.md)** — one-time setup for the hub,
+  Apollo host, and clients, plus local and remote capture flows.
+- **[Deploying the hub](./docs/user/deploy.md)** — LAN/WireGuard, tailnet-only, or direct-on-host
+  deployment.
+- **[Agent-less capture (Android & Xbox)](./docs/user/agentless-capture.md)** — manual evidence
+  entry for platforms that cannot run the collector.
+- **[Log paths & logging knobs](./docs/user/log-paths.md)** — where each platform writes logs and
+  how to turn verbosity up.
+- **[Scenario matrix](./docs/user/scenario-matrix.md)** — repeatable local/Wi-Fi/remote run order.
+- **[Troubleshooting](./docs/user/troubleshooting.md)** — common failure modes and what to inspect
+  in a session.
+- **[Copilot analysis](./docs/user/copilot-analysis.md)** — what Analyze/chat can tell you and how
+  the optional backends behave.
+
+## Maintainers
+
+For code, schemas, deployment internals, or maintenance work, start with the audience router in
+[docs/README.md](./docs/README.md).

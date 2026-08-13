@@ -14,6 +14,7 @@ def test_health(client):
     r = client.get("/health")
     assert r.status_code == 200
     assert r.json()["copilot_backend"] == "mock"
+    assert r.json()["screenshot_requests_enabled"] is True
 
 
 def test_session_lifecycle(client):

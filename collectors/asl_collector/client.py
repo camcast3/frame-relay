@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import json
+import os
 import urllib.error
+import urllib.parse
 import urllib.request
+import uuid
 from typing import Any, Optional
 
 
@@ -11,10 +14,22 @@ class HubError(RuntimeError):
     pass
 
 
-def _request(method: str, url: str, payload: Optional[dict[str, Any]] = None) -> Any:
-    data = json.dumps(payload).encode() if payload is not None else None
-    req = urllib.request.Request(url, data=data, method=method,
-                                headers={"Content-Type": "application/json"})
+def _request(
+    method: str,
+    url: str,
+    payload: Optional[dict[str, Any]] = None,
+    *,
+    data: bytes | None = None,
+    headers: Optional[dict[str, str]] = None,
+) -> Any:
+    if payload is not None and data is not None:
+        raise ValueError("payload and data are mutually exclusive")
+    body = data
+    merged_headers = dict(headers or {})
+    if payload is not None:
+        body = json.dumps(payload).encode()
+        merged_headers.setdefault("Content-Type", "application/json")
+    req = urllib.request.Request(url, data=body, method=method, headers=merged_headers)
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             body = resp.read().decode()
@@ -80,3 +95,107 @@ def post_nettest(hub: str, sid: str, result: dict[str, Any]) -> None:
 
 def stop_session(hub: str, sid: str) -> None:
     _request("POST", f"{hub}/api/sessions/{sid}/stop")
+
+
+def _screenshot_headers(token: str | None) -> dict[str, str]:
+    token = (token or "").strip()
+    return {"X-ASL-Screenshot-Token": token} if token else {}
+
+
+def _encode_multipart(
+    fields: dict[str, object | None],
+    *,
+    file_field: str,
+    filename: str,
+    content: bytes,
+    content_type: str,
+) -> tuple[bytes, str]:
+    boundary = f"----aslcollector{uuid.uuid4().hex}"
+    parts: list[bytes] = []
+    for name, value in fields.items():
+        if value is None:
+            continue
+        parts.extend([
+            f"--{boundary}\r\n".encode(),
+            f'Content-Disposition: form-data; name="{name}"\r\n\r\n'.encode(),
+            str(value).encode("utf-8"),
+            b"\r\n",
+        ])
+    parts.extend([
+        f"--{boundary}\r\n".encode(),
+        (
+            f'Content-Disposition: form-data; name="{file_field}"; '
+            f'filename="{filename}"\r\n'
+        ).encode(),
+        f"Content-Type: {content_type}\r\n\r\n".encode(),
+        content,
+        b"\r\n",
+        f"--{boundary}--\r\n".encode(),
+    ])
+    return b"".join(parts), boundary
+
+
+def pending_screenshot_requests(
+    hub: str,
+    sid: str,
+    source: str,
+    *,
+    token: str | None = None,
+) -> list[dict[str, Any]]:
+    params = urllib.parse.urlencode({"source": source})
+    url = f"{hub}/api/sessions/{sid}/screenshot-requests/pending?{params}"
+    return _request("GET", url, headers=_screenshot_headers(token)) or []
+
+
+def complete_screenshot_request(
+    hub: str,
+    sid: str,
+    request_id: int,
+    source: str,
+    path: str,
+    *,
+    machine: str | None = None,
+    captured_at: str | None = None,
+    display_name: str | None = None,
+    token: str | None = None,
+) -> dict[str, Any]:
+    with open(path, "rb") as fh:
+        content = fh.read()
+    body, boundary = _encode_multipart(
+        {
+            "source": source,
+            "machine": machine,
+            "captured_at": captured_at,
+            "display_name": display_name,
+        },
+        file_field="file",
+        filename=os.path.basename(path) or "capture.png",
+        content=content,
+        content_type="image/png",
+    )
+    headers = _screenshot_headers(token)
+    headers["Content-Type"] = f"multipart/form-data; boundary={boundary}"
+    return _request(
+        "POST",
+        f"{hub}/api/sessions/{sid}/screenshot-requests/{request_id}/complete",
+        data=body,
+        headers=headers,
+    )
+
+
+def fail_screenshot_request(
+    hub: str,
+    sid: str,
+    request_id: int,
+    source: str,
+    error: str,
+    *,
+    machine: str | None = None,
+    token: str | None = None,
+) -> dict[str, Any]:
+    return _request(
+        "POST",
+        f"{hub}/api/sessions/{sid}/screenshot-requests/{request_id}/fail",
+        {"source": source, "error": error, "machine": machine},
+        headers=_screenshot_headers(token),
+    )

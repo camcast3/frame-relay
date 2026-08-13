@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import config, db, display_validation, service
-from .routers import analysis, ingest, sessions
+from .routers import analysis, ingest, screenshot_requests, sessions
 
 BASE = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE / "templates"))
@@ -28,6 +28,7 @@ app = FastAPI(title="Apollo Streaming Lab", version="0.1.0", lifespan=lifespan)
 app.include_router(sessions.router)
 app.include_router(ingest.router)
 app.include_router(analysis.router)
+app.include_router(screenshot_requests.router)
 
 app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
 app.mount("/artifacts", StaticFiles(directory=str(config.ARTIFACTS_DIR), check_dir=False), name="artifacts")
@@ -35,7 +36,11 @@ app.mount("/artifacts", StaticFiles(directory=str(config.ARTIFACTS_DIR), check_d
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "copilot_backend": config.COPILOT_BACKEND}
+    return {
+        "status": "ok",
+        "copilot_backend": config.COPILOT_BACKEND,
+        "screenshot_requests_enabled": bool(config.SCREENSHOT_TOKEN),
+    }
 
 
 @app.get("/", response_class=HTMLResponse)

@@ -17,6 +17,7 @@ from .models import (
     SessionCreate,
     SessionObservationPatch,
     SessionUpdate,
+    Source,
 )
 
 SESSION_JSON_FIELDS = frozenset(db.SESSION_JSON_COLUMNS)
@@ -29,6 +30,14 @@ OBSERVATION_SCALAR_FIELDS = (
     "client_version",
 )
 COMPARISON_REQUESTED_FIELDS = ("codec", "resolution", "fps", "bitrate_mbps", "hdr")
+SCREENSHOT_REQUEST_SELECT = """
+SELECT sr.*,
+       a.filename AS artifact_filename,
+       a.kind AS artifact_kind,
+       a.caption AS artifact_caption
+FROM screenshot_requests sr
+LEFT JOIN artifacts a ON a.id = sr.artifact_id
+"""
 
 
 def _now() -> str:
@@ -121,6 +130,70 @@ def _collect_distinct(values: list[Any]) -> list[Any]:
         if value not in distinct:
             distinct.append(value)
     return distinct
+
+
+class ScreenshotRequestNotFoundError(LookupError):
+    pass
+
+
+class ScreenshotRequestConflictError(RuntimeError):
+    pass
+
+
+def _insert_artifact(
+    conn: Any,
+    session_id: str,
+    kind: str,
+    filename: str,
+    caption: str | None,
+) -> int:
+    cur = conn.execute(
+        "INSERT INTO artifacts (session_id, kind, filename, caption, uploaded_at) VALUES (?,?,?,?,?)",
+        (session_id, kind, filename, caption, _now()),
+    )
+    return int(cur.lastrowid)
+
+
+def _fetch_screenshot_requests(
+    conn: Any,
+    where: str,
+    args: list[Any],
+) -> list[dict[str, Any]]:
+    query = SCREENSHOT_REQUEST_SELECT
+    if where:
+        query += f" WHERE {where}"
+    query += " ORDER BY sr.id ASC"
+    return db.rows_to_dicts(conn.execute(query, args).fetchall())
+
+
+def _fetch_screenshot_request(
+    conn: Any,
+    session_id: str,
+    request_id: int,
+) -> dict[str, Any] | None:
+    rows = _fetch_screenshot_requests(conn, "sr.session_id=? AND sr.id=?", [session_id, request_id])
+    return rows[0] if rows else None
+
+
+def _require_pending_screenshot_request(
+    conn: Any,
+    session_id: str,
+    request_id: int,
+    source: Source,
+) -> None:
+    if conn.execute("SELECT 1 FROM sessions WHERE id=?", (session_id,)).fetchone() is None:
+        raise ScreenshotRequestNotFoundError("session not found")
+
+    row = conn.execute(
+        "SELECT target_source, status FROM screenshot_requests WHERE id=? AND session_id=?",
+        (request_id, session_id),
+    ).fetchone()
+    if row is None:
+        raise ScreenshotRequestNotFoundError("screenshot request not found")
+    if row["target_source"] != source:
+        raise ScreenshotRequestConflictError("screenshot request target does not match source")
+    if row["status"] != "pending":
+        raise ScreenshotRequestConflictError("screenshot request is not pending")
 
 
 # --- sessions -------------------------------------------------------------------
@@ -368,11 +441,7 @@ def get_net_tests(session_id: str) -> list[dict[str, Any]]:
 
 def add_artifact(session_id: str, kind: str, filename: str, caption: str | None) -> int:
     with db.db() as conn:
-        cur = conn.execute(
-            "INSERT INTO artifacts (session_id, kind, filename, caption, uploaded_at) VALUES (?,?,?,?,?)",
-            (session_id, kind, filename, caption, _now()),
-        )
-        return int(cur.lastrowid)
+        return _insert_artifact(conn, session_id, kind, filename, caption)
 
 
 def get_artifacts(session_id: str) -> list[dict[str, Any]]:
@@ -381,6 +450,97 @@ def get_artifacts(session_id: str) -> list[dict[str, Any]]:
             "SELECT * FROM artifacts WHERE session_id=? ORDER BY id ASC", (session_id,)
         ).fetchall()
     return db.rows_to_dicts(rows)
+
+
+def create_screenshot_requests(session_id: str, targets: list[Source]) -> list[dict[str, Any]]:
+    requested_at = _now()
+    request_ids: list[int] = []
+    with db.db() as conn:
+        for target in targets:
+            cur = conn.execute(
+                """INSERT INTO screenshot_requests
+                   (session_id, target_source, requested_at)
+                   VALUES (?,?,?)""",
+                (session_id, target, requested_at),
+            )
+            request_ids.append(int(cur.lastrowid))
+
+        if not request_ids:
+            return []
+
+        placeholders = ",".join("?" for _ in request_ids)
+        return _fetch_screenshot_requests(conn, f"sr.id IN ({placeholders})", request_ids)
+
+
+def get_screenshot_requests(session_id: str) -> list[dict[str, Any]]:
+    with db.db() as conn:
+        return _fetch_screenshot_requests(conn, "sr.session_id=?", [session_id])
+
+
+def get_pending_screenshot_requests(session_id: str, source: Source) -> list[dict[str, Any]]:
+    with db.db() as conn:
+        return _fetch_screenshot_requests(
+            conn,
+            "sr.session_id=? AND sr.status='pending' AND sr.target_source=?",
+            [session_id, source],
+        )
+
+
+def complete_screenshot_request(
+    session_id: str,
+    request_id: int,
+    source: Source,
+    filename: str,
+    machine: str | None,
+    caption: str,
+    kind: str,
+    completed_at: str | None = None,
+) -> dict[str, Any]:
+    finished_at = completed_at or _now()
+    with db.db() as conn:
+        cur = conn.execute(
+            """UPDATE screenshot_requests
+               SET status='completed', completed_at=?, machine=?, artifact_id=NULL, error=NULL
+               WHERE id=? AND session_id=? AND target_source=? AND status='pending'""",
+            (finished_at, machine, request_id, session_id, source),
+        )
+        if cur.rowcount != 1:
+            _require_pending_screenshot_request(conn, session_id, request_id, source)
+            raise ScreenshotRequestConflictError("screenshot request is not pending")
+        artifact_id = _insert_artifact(conn, session_id, kind, filename, caption)
+        conn.execute(
+            "UPDATE screenshot_requests SET artifact_id=? WHERE id=?",
+            (artifact_id, request_id),
+        )
+        row = _fetch_screenshot_request(conn, session_id, request_id)
+    if row is None:
+        raise ScreenshotRequestNotFoundError("screenshot request not found")
+    return row
+
+
+def fail_screenshot_request(
+    session_id: str,
+    request_id: int,
+    source: Source,
+    error: str,
+    machine: str | None,
+    completed_at: str | None = None,
+) -> dict[str, Any]:
+    finished_at = completed_at or _now()
+    with db.db() as conn:
+        cur = conn.execute(
+            """UPDATE screenshot_requests
+               SET status='failed', completed_at=?, machine=?, artifact_id=NULL, error=?
+               WHERE id=? AND session_id=? AND target_source=? AND status='pending'""",
+            (finished_at, machine, error, request_id, session_id, source),
+        )
+        if cur.rowcount != 1:
+            _require_pending_screenshot_request(conn, session_id, request_id, source)
+            raise ScreenshotRequestConflictError("screenshot request is not pending")
+        row = _fetch_screenshot_request(conn, session_id, request_id)
+    if row is None:
+        raise ScreenshotRequestNotFoundError("screenshot request not found")
+    return row
 
 
 def add_chat(session_id: str, role: str, content: str) -> int:
@@ -415,6 +575,7 @@ def get_bundle(session_id: str) -> Optional[dict[str, Any]]:
         "display_samples": get_display_samples(session_id),
         "net_tests": get_net_tests(session_id),
         "artifacts": get_artifacts(session_id),
+        "screenshot_requests": get_screenshot_requests(session_id),
         "chat": get_chat(session_id),
     }
 

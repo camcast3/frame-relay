@@ -1,13 +1,35 @@
 /* Apollo Streaming Lab - front-end glue. Vanilla JS, no build step. */
 const ASL = (() => {
   const sid = () => document.getElementById("session")?.dataset.id;
+  const SCREENSHOT_TOKEN_KEY = "asl.screenshotToken";
+  const SCREENSHOT_BUTTON_IDS = [
+    "screenshot-request-both",
+    "screenshot-request-host",
+    "screenshot-request-client",
+  ];
+  let screenshotSessionActive = false;
+  let screenshotRequestBusy = false;
+  let screenshotRequests = [];
 
-  async function api(method, path, body, isForm) {
-    const opts = { method, headers: {} };
-    if (body && !isForm) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+  async function readError(r) {
+    const body = (await r.text()).trim();
+    if (!body) return `${r.status} ${r.statusText || "request failed"}`;
+    try {
+      const data = JSON.parse(body);
+      if (data && typeof data.detail === "string") return `${r.status} ${data.detail}`;
+    } catch (e) { /* plain-text response */ }
+    return `${r.status} ${body}`;
+  }
+
+  async function api(method, path, body, isForm, extraHeaders) {
+    const opts = { method, headers: { ...(extraHeaders || {}) } };
+    if (body && !isForm) {
+      if (!opts.headers["Content-Type"]) opts.headers["Content-Type"] = "application/json";
+      opts.body = JSON.stringify(body);
+    }
     if (body && isForm) { opts.body = body; }
     const r = await fetch(path, opts);
-    if (!r.ok) { throw new Error(`${r.status} ${await r.text()}`); }
+    if (!r.ok) { throw new Error(await readError(r)); }
     return r.status === 204 ? null : r.json();
   }
 
@@ -91,6 +113,195 @@ const ASL = (() => {
       await api("POST", `/api/sessions/${sid()}/artifacts`, new FormData(form), true);
       location.reload();
     });
+  }
+
+  function parseScriptJson(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    try { return JSON.parse(el.textContent || "null"); } catch (e) { return null; }
+  }
+
+  function setScreenshotRequestMessage(message, kind) {
+    const el = document.getElementById("screenshot-request-status");
+    if (!el) return;
+    el.textContent = message || "";
+    el.className = "small screenshot-request-status";
+    if (kind) el.classList.add("screenshot-request-status-" + kind);
+  }
+
+  function persistScreenshotToken(value) {
+    try {
+      if (value) sessionStorage.setItem(SCREENSHOT_TOKEN_KEY, value);
+      else sessionStorage.removeItem(SCREENSHOT_TOKEN_KEY);
+    } catch (e) { /* private mode: token will not persist */ }
+  }
+
+  function restoreScreenshotToken() {
+    const input = document.getElementById("screenshot-token");
+    if (!input) return;
+    try { input.value = sessionStorage.getItem(SCREENSHOT_TOKEN_KEY) || ""; } catch (e) { /* ignore */ }
+  }
+
+  function artifactUrl(filename) {
+    return filename ? `/artifacts/${encodeURIComponent(filename)}` : "";
+  }
+
+  function screenshotSummary(request) {
+    if (!request) return "no requests yet";
+    if (request.status === "pending") return `pending · requested ${request.requested_at || "—"}`;
+    if (request.status === "failed") return `failed · ${request.completed_at || request.requested_at || "—"}`;
+    return `completed · ${request.completed_at || request.requested_at || "—"}`;
+  }
+
+  function updateScreenshotControls(active = screenshotSessionActive) {
+    screenshotSessionActive = active;
+    const token = document.getElementById("screenshot-token");
+    if (token) token.disabled = !screenshotSessionActive;
+    const stopped = document.getElementById("screenshot-request-disabled");
+    if (stopped) stopped.hidden = screenshotSessionActive;
+    for (const id of SCREENSHOT_BUTTON_IDS) {
+      const btn = document.getElementById(id);
+      if (btn) btn.disabled = !screenshotSessionActive || screenshotRequestBusy;
+    }
+  }
+
+  function setScreenshotBusy(busy) {
+    screenshotRequestBusy = busy;
+    updateScreenshotControls(screenshotSessionActive);
+  }
+
+  function latestScreenshotRequest(source, completedOnly = false) {
+    let latest = null;
+    for (const request of screenshotRequests) {
+      if (request.target_source !== source) continue;
+      if (completedOnly && (request.status !== "completed" || !request.artifact_filename)) continue;
+      if (!latest || Number(request.id || 0) >= Number(latest.id || 0)) latest = request;
+    }
+    return latest;
+  }
+
+  function renderScreenshotSource(source) {
+    const title = source === "host" ? "Host" : "Client";
+    const latest = latestScreenshotRequest(source);
+    const completed = latestScreenshotRequest(source, true);
+    const state = document.getElementById(`screenshot-${source}-state`);
+    if (state) {
+      state.textContent = latest ? latest.status : "no requests";
+      state.className = `pill screenshot-status screenshot-status-${latest ? latest.status : "none"}`;
+    }
+    text(`screenshot-${source}-summary`, screenshotSummary(latest));
+    text(`screenshot-${source}-caption`, completed?.artifact_caption || "—");
+    text(`screenshot-${source}-machine`, completed?.machine || "—");
+    text(`screenshot-${source}-completed`, completed?.completed_at || "—");
+
+    const link = document.getElementById(`screenshot-${source}-link`);
+    const img = document.getElementById(`screenshot-${source}-image`);
+    const empty = document.getElementById(`screenshot-${source}-empty`);
+    if (completed && completed.artifact_filename) {
+      const url = artifactUrl(completed.artifact_filename);
+      if (link) { link.hidden = false; link.href = url; }
+      if (img) {
+        img.src = url;
+        img.alt = completed.artifact_caption || `${title} screenshot`;
+      }
+      if (empty) empty.hidden = true;
+    } else {
+      if (link) {
+        link.hidden = true;
+        link.removeAttribute("href");
+      }
+      if (img) {
+        img.removeAttribute("src");
+        img.alt = `${title} screenshot`;
+      }
+      if (empty) {
+        empty.hidden = false;
+        empty.textContent = `No completed ${source} screenshot yet.`;
+      }
+    }
+
+    const error = document.getElementById(`screenshot-${source}-error`);
+    const errorText = latest && latest.status === "failed" && latest.error ? latest.error : "";
+    if (error) {
+      error.textContent = errorText;
+      error.hidden = !errorText;
+    }
+  }
+
+  function renderScreenshotComparison() {
+    if (!document.getElementById("screenshot-comparison")) return;
+    for (const source of ["host", "client"]) renderScreenshotSource(source);
+  }
+
+  function setScreenshotRequests(requests) {
+    screenshotRequests = Array.isArray(requests)
+      ? [...requests].sort((a, b) => Number(a.id || 0) - Number(b.id || 0))
+      : [];
+    const raw = document.getElementById("screenshot-request-data");
+    if (raw) raw.textContent = JSON.stringify(screenshotRequests);
+    renderScreenshotComparison();
+  }
+
+  function mergeScreenshotRequests(requests) {
+    const merged = new Map((screenshotRequests || []).map((request) => [String(request.id), request]));
+    for (const request of requests || []) merged.set(String(request.id), request);
+    setScreenshotRequests(Array.from(merged.values()));
+  }
+
+  async function queueScreenshotRequests(targets) {
+    const input = document.getElementById("screenshot-token");
+    if (!input || !screenshotSessionActive || screenshotRequestBusy) return;
+    const token = input.value.trim();
+    if (!token) {
+      setScreenshotRequestMessage("Screenshot token required.", "error");
+      input.focus();
+      return;
+    }
+    persistScreenshotToken(input.value);
+    setScreenshotRequestMessage("Submitting screenshot request…", "info");
+    setScreenshotBusy(true);
+    try {
+      const created = await api(
+        "POST",
+        `/api/sessions/${sid()}/screenshot-requests`,
+        { targets },
+        false,
+        { "X-ASL-Screenshot-Token": token },
+      );
+      mergeScreenshotRequests(created || []);
+      setScreenshotRequestMessage(
+        `Queued ${targets.length === 2 ? "host + client" : targets[0]} screenshot request.`,
+        "success",
+      );
+      await refreshOnce();
+    } catch (e) {
+      setScreenshotRequestMessage(e.message, "error");
+    } finally {
+      setScreenshotBusy(false);
+    }
+  }
+
+  function wireScreenshotRequests() {
+    const card = document.getElementById("screenshot-comparison");
+    if (!card) return;
+    const input = document.getElementById("screenshot-token");
+    if (input) {
+      restoreScreenshotToken();
+      input.addEventListener("input", () => {
+        persistScreenshotToken(input.value);
+        setScreenshotRequestMessage("");
+      });
+    }
+    const bind = (id, targets) => {
+      const btn = document.getElementById(id);
+      if (btn) btn.addEventListener("click", () => { queueScreenshotRequests(targets); });
+    };
+    bind("screenshot-request-both", ["host", "client"]);
+    bind("screenshot-request-host", ["host"]);
+    bind("screenshot-request-client", ["client"]);
+    updateScreenshotControls(document.getElementById("session")?.dataset.status === "active");
+    const initialRequests = parseScriptJson("screenshot-request-data");
+    if (Array.isArray(initialRequests)) setScreenshotRequests(initialRequests);
   }
 
   function applyLogFilter() {
@@ -453,6 +664,10 @@ const ASL = (() => {
     const raw = document.getElementById("bundle-data");
     if (raw) { raw.textContent = JSON.stringify(b.link_samples || []); drawRssiChart(); }
     const s = b.session || {};
+    const session = document.getElementById("session");
+    if (session && s.status) session.dataset.status = s.status;
+    updateScreenshotControls(s.status === "active");
+    setScreenshotRequests(b.screenshot_requests || []);
     const path = document.getElementById("meta-path"); if (path) path.textContent = s.network_path || "—";
     const hc = document.getElementById("meta-hostclient"); if (hc) hc.textContent = `${s.host || "?"} → ${s.client || "?"}`;
     renderStreamEvidence(s);
@@ -553,6 +768,7 @@ const ASL = (() => {
 
   function initSessionPage() {
     restoreLogView(); applyLogFilter(); wireSyncScroll(); wireChat(); wireArtifactUpload();
+    wireScreenshotRequests();
     wirePasteLog(); wireManualLink(); wireEvidenceForm(); drawRssiChart(); startLiveRefresh();
     const raw = document.getElementById("bundle-data");
     if (raw) { try { renderLinkSummary(JSON.parse(raw.textContent) || []); } catch (e) {} }

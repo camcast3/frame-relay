@@ -1,22 +1,24 @@
-# Apollo Streaming Lab — documentation
+# Apollo Streaming Lab documentation
 
-All project documentation lives here. Start with the [root README](../README.md) for the
-overview, architecture, and dev quickstart, then dive into a guide below.
+Choose the docs that match why you're here.
 
-## Guides
-- **[Host & client setup](./host-client-setup.md)** — wire up the Apollo host, the hub, and each
-  Moonlight/Artemis client for local (LAN) and remote (WireGuard) tests, plus the per-test
-  capture walkthrough.
-- **[Deploying the hub](./deploy.md)** — the three deployment options (LAN/WireGuard, tailnet-only,
-  and directly on a host without Docker) and all `.env` configuration.
-- **[Agent-less capture (Android & Xbox)](./agentless-capture.md)** — manual capture via the
-  hub's **Manual entry** panel for clients that can't run the collector.
-- **[Copilot analysis](./copilot-analysis.md)** — the `mock`/`cli`/`sdk` backends, what the
-  offline analyzer detects, and their config.
+## Use / operate the lab
 
-## Reference
-- **[Log paths & logging knobs](./log-paths.md)** — where each platform writes its log and how to
-  turn verbosity up.
-- **[Scenario matrix](./scenario-matrix.md)** — the local→remote / Ethernet→Wi-Fi test template.
-- **[Troubleshooting](./troubleshooting.md)** — common streaming failure modes and where the
-  hub/collectors help.
+Start with [User/operator guides](./user/README.md).
+
+- [First multi-client test](./user/first-multi-client-test.md) — canonical zero-context
+  walkthrough; begin here.
+- [Host & client setup](./user/host-client-setup.md) — one-time setup for the hub, Apollo host,
+  and clients.
+- [Deploying the hub](./user/deploy.md) — LAN/WireGuard, tailnet-only, or direct-on-host
+  deployment.
+- [Troubleshooting](./user/troubleshooting.md) — common streaming failures and where to look in a
+  session.
+
+## Develop / maintain the lab
+
+Start with [Maintainer docs](../docs/maintainer/README.md).
+
+If you're changing code, compose files, schemas, automation, or release/operations internals, stay
+in the maintainer docs. If you're setting up the hub or running streaming sessions, stay in the
+user docs above.

@@ -64,6 +64,9 @@ too. On Xbox you use the **Moonlight** app.
 - Enable Moonlight's **on-screen performance overlay** during the stream and note the stats
   (decode time, host/network latency, dropped frames).
 - Log export on Xbox is limited — screenshot the overlay or type your observations.
+- When you want side-by-side host/client images, take the Xbox screenshot manually at the same
+  scene you want to compare and upload it on the session page; Xbox cannot fulfill the automated
+  screenshot request.
 
 ### 2. Xbox network details
 - Xbox → Settings → Network shows wired vs Wi-Fi and connection quality.

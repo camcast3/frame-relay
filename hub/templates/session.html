@@ -3,6 +3,47 @@
 {% macro state(value) -%}
   {{ "yes" if value is sameas true or value == 1 else ("no" if value is sameas false or value == 0 else "unknown") }}
 {%- endmacro %}
+{% macro screenshot_panel(source, latest, completed) -%}
+  {% set title = source|capitalize %}
+  {% set latest_completed = completed if completed and completed.artifact_filename else none %}
+  {% set alt = latest_completed.artifact_caption if latest_completed and latest_completed.artifact_caption else (title ~ " screenshot") %}
+  {% set latest_status = latest.status if latest else "none" %}
+  {% set latest_status_label = latest.status if latest else "no requests" %}
+  <section class="screenshot-panel" id="screenshot-{{ source }}-panel">
+    <div class="screenshot-panel-head">
+      <h3>{{ title }}</h3>
+      <span id="screenshot-{{ source }}-state" class="pill screenshot-status screenshot-status-{{ latest_status }}">{{ latest_status_label }}</span>
+    </div>
+    <div class="screenshot-preview">
+      <a id="screenshot-{{ source }}-link" href="{% if latest_completed %}/artifacts/{{ latest_completed.artifact_filename | urlencode }}{% endif %}" target="_blank" {% if not latest_completed %}hidden{% endif %}>
+        <img id="screenshot-{{ source }}-image" src="{% if latest_completed %}/artifacts/{{ latest_completed.artifact_filename | urlencode }}{% endif %}" alt="{{ alt }}">
+      </a>
+      <p id="screenshot-{{ source }}-empty" class="muted small screenshot-placeholder" {% if latest_completed %}hidden{% endif %}>No completed {{ source }} screenshot yet.</p>
+    </div>
+    <div class="meta-grid screenshot-meta-grid">
+      <div><span class="k">Caption</span><span id="screenshot-{{ source }}-caption">{{ latest_completed.artifact_caption if latest_completed else "—" }}</span></div>
+      <div><span class="k">Machine</span><span id="screenshot-{{ source }}-machine">{{ latest_completed.machine if latest_completed and latest_completed.machine else "—" }}</span></div>
+      <div><span class="k">Completed</span><span id="screenshot-{{ source }}-completed" class="mono">{{ latest_completed.completed_at if latest_completed and latest_completed.completed_at else "—" }}</span></div>
+    </div>
+    <div class="screenshot-request-state">
+      <span class="k">Latest request</span>
+      <span id="screenshot-{{ source }}-summary" class="mono small">
+        {% if latest %}
+          {% if latest.status == "pending" %}
+            pending · requested {{ latest.requested_at or "—" }}
+          {% elif latest.status == "failed" %}
+            failed · {{ latest.completed_at or latest.requested_at or "—" }}
+          {% else %}
+            completed · {{ latest.completed_at or latest.requested_at or "—" }}
+          {% endif %}
+        {% else %}
+          no requests yet
+        {% endif %}
+      </span>
+    </div>
+    <p id="screenshot-{{ source }}-error" class="small screenshot-request-error" {% if not latest or not latest.error %}hidden{% endif %}>{{ latest.error if latest and latest.error else "" }}</p>
+  </section>
+{%- endmacro %}
 {% block title %}{{ s.name or s.id }} · Apollo Streaming Lab{% endblock %}
 {% block content %}
 <div id="session" data-id="{{ s.id }}" data-status="{{ s.status }}">
@@ -265,6 +306,48 @@
     </section>
   </div>
 
+  {% set shot = namespace(latest_host=None, latest_client=None, completed_host=None, completed_client=None) %}
+  {% for req in b.screenshot_requests %}
+    {% if req.target_source == "host" %}
+      {% set shot.latest_host = req %}
+      {% if req.status == "completed" and req.artifact_filename %}
+        {% set shot.completed_host = req %}
+      {% endif %}
+    {% elif req.target_source == "client" %}
+      {% set shot.latest_client = req %}
+      {% if req.status == "completed" and req.artifact_filename %}
+        {% set shot.completed_client = req %}
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+  <section class="card" id="screenshot-comparison">
+    <div class="card-head"><h2>Host/client screenshot comparison</h2></div>
+    <p class="muted small">Collectors on both machines must share the same screenshot token.
+      Requests start near-simultaneously, but they are not frame synchronized. HDR captures may
+      be tone-mapped, and protected content can come back black. Xbox/manual-entry clients cannot
+      fulfill client screenshot requests.</p>
+    <div class="actions screenshot-actions">
+      <label class="screenshot-token-field">Screenshot token
+        <input id="screenshot-token" type="password" autocomplete="off" spellcheck="false"
+          placeholder="stored only in this browser session"
+          {% if s.status == 'stopped' %}disabled{% endif %}>
+      </label>
+      <button id="screenshot-request-both" class="btn" type="button"
+        {% if s.status == 'stopped' %}disabled{% endif %}>Request host + client</button>
+      <button id="screenshot-request-host" class="btn" type="button"
+        {% if s.status == 'stopped' %}disabled{% endif %}>Request host only</button>
+      <button id="screenshot-request-client" class="btn" type="button"
+        {% if s.status == 'stopped' %}disabled{% endif %}>Request client only</button>
+    </div>
+    <p id="screenshot-request-disabled" class="muted small"
+      {% if s.status != 'stopped' %}hidden{% endif %}>Session stopped — new screenshot requests are disabled.</p>
+    <p id="screenshot-request-status" class="small screenshot-request-status" aria-live="polite"></p>
+    <div class="screenshot-grid">
+      {{ screenshot_panel("host", shot.latest_host, shot.completed_host) }}
+      {{ screenshot_panel("client", shot.latest_client, shot.completed_client) }}
+    </div>
+  </section>
+
   <section class="card">
     <h2>Notes / experience</h2>
     <textarea id="notes" rows="4">{{ s.notes or "" }}</textarea>
@@ -336,6 +419,7 @@
   </section>
   {% endif %}
 </div>
+<script id="screenshot-request-data" type="application/json">{{ b.screenshot_requests | tojson }}</script>
 <script id="bundle-data" type="application/json">{{ b.link_samples | tojson }}</script>
 {% endblock %}
 {% block scripts %}<script>ASL.initSessionPage();</script>{% endblock %}

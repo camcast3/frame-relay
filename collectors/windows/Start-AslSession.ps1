@@ -55,6 +55,8 @@ param(
   [string]$Machine,
   [double]$IntervalSeconds = 15,
   [double]$PostIntervalSeconds = 30,
+  [string]$ScreenshotToken,
+  [double]$ScreenshotPollInterval = 3,
   [int]$DurationSeconds = 0,
   [switch]$StopSession,
   # metadata used only with -Create
@@ -102,6 +104,10 @@ foreach ($p in $LogPath) { $asl += @('--log', $p) }
 if ($Launch)      { $asl += @('--launch', $Launch) }
 if ($LaunchClient){ $asl += '--launch-client' }
 foreach ($a in $LaunchArgs) { $asl += @('--launch-arg', $a) }
+if ($ScreenshotToken) { $asl += @('--screenshot-token', $ScreenshotToken) }
+if ($PSBoundParameters.ContainsKey('ScreenshotPollInterval')) {
+  $asl += @('--screenshot-poll-interval', $ScreenshotPollInterval)
+}
 if ($Name)        { $asl += @('--name', $Name) }
 if ($ComparisonLabel) { $asl += @('--comparison-label', $ComparisonLabel) }
 if ($ApolloApp)   { $asl += @('--apollo-app', $ApolloApp) }

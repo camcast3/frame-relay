@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 NetworkPath = Literal["local-LAN", "remote-WireGuard", "remote-Tailscale", "remote-WAN"]
 Outcome = Literal["unknown", "pass", "fail", "partial"]
@@ -11,6 +11,7 @@ Source = Literal["host", "client"]
 Role = Literal["apollo", "moonlight", "artemis"]
 LinkType = Literal["ethernet", "wifi", "other"]
 DisplayPhase = Literal["before", "during", "after"]
+SCREENSHOT_REQUEST_ERROR_MAX_LENGTH = 2000
 
 
 class RequestedSettings(BaseModel):
@@ -174,3 +175,32 @@ class NetTestIn(BaseModel):
 
 class ChatIn(BaseModel):
     message: str
+
+
+class ScreenshotRequestIn(BaseModel):
+    targets: list[Source] = Field(default_factory=lambda: ["host", "client"])
+
+    @field_validator("targets")
+    @classmethod
+    def normalize_targets(cls, value: list[Source]) -> list[Source]:
+        targets: list[Source] = []
+        for target in value:
+            if target not in targets:
+                targets.append(target)
+        if not targets:
+            raise ValueError("targets must not be empty")
+        return targets
+
+
+class ScreenshotRequestFailIn(BaseModel):
+    source: Source
+    error: str = Field(min_length=1)
+    machine: Optional[str] = None
+
+    @field_validator("error")
+    @classmethod
+    def normalize_error(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("error must not be empty")
+        return normalized[:SCREENSHOT_REQUEST_ERROR_MAX_LENGTH]

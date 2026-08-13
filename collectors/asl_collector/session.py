@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import glob
 import json
+import os
 import platform
 import subprocess
 import sys
@@ -40,6 +41,7 @@ from . import (
     hostmeta,
     logslice,
     logfind,
+    screenshot,
 )
 from .netmon import LinkMonitor
 
@@ -166,6 +168,7 @@ DEFAULT_WG_SUBNETS = ["192.168.2.0/24"]  # user's WireGuard VLAN (override with 
 # cannot be captured stays on the awaiting-host list, so an unguarded retry loop would spin
 # on it forever and never pick up the next test.
 WATCH_MAX_FAILURES = 3
+DEFAULT_SCREENSHOT_POLL_INTERVAL = 3.0
 
 
 def _describe(s: dict) -> str:
@@ -368,6 +371,151 @@ def _print_once(msg: str, previous: str) -> None:
         print(msg)
 
 
+def _cleanup_screenshot_file(path: str | None) -> None:
+    if not path:
+        return
+    try:
+        os.unlink(path)
+    except FileNotFoundError:
+        pass
+    except OSError:
+        pass
+
+
+def _report_screenshot_failure(
+    hub: str,
+    sid: str,
+    request_id: int,
+    source: str,
+    machine: str,
+    token: str,
+    error: str,
+) -> bool:
+    try:
+        client.fail_screenshot_request(
+            hub,
+            sid,
+            request_id,
+            source,
+            error,
+            machine=machine,
+            token=token,
+        )
+        return True
+    except Exception as exc:  # noqa: BLE001 - keep the capture alive if reporting fails
+        print(f"screenshot request {request_id} failure report failed: {exc}")
+        return False
+
+
+def _preferred_screenshot_display(source: str) -> str | None:
+    if source != "host" or platform.system() != "Windows":
+        return None
+    try:
+        displays = displayprobe.detect()
+    except Exception as exc:  # noqa: BLE001 - screenshot falls back to Windows primary
+        print(f"preferred screenshot display detection failed: {exc}")
+        return None
+    candidate = next((row for row in displays if row.get("is_virtual") is True), None)
+    if candidate is None:
+        candidate = next((row for row in displays if row.get("primary") is True), None)
+    if candidate is None:
+        return None
+    value = candidate.get("source_name")
+    return str(value) if value not in (None, "") else None
+
+
+def _process_screenshot_request(
+    hub: str,
+    sid: str,
+    request_id: int,
+    source: str,
+    machine: str,
+    token: str,
+) -> bool:
+    captured: dict[str, Any] | None = None
+    try:
+        captured = screenshot.capture(_preferred_screenshot_display(source))
+        client.complete_screenshot_request(
+            hub,
+            sid,
+            request_id,
+            source,
+            str(captured["path"]),
+            machine=machine,
+            captured_at=str(captured.get("captured_at") or ""),
+            display_name=str(captured.get("display_name") or ""),
+            token=token,
+        )
+        print(
+            f"completed screenshot request {request_id} "
+            f"({captured['width']}x{captured['height']})"
+        )
+        return True
+    except Exception as exc:  # noqa: BLE001 - report request failures back to the hub
+        message = str(exc) or exc.__class__.__name__
+        print(f"screenshot request {request_id} failed: {message}")
+        return _report_screenshot_failure(
+            hub, sid, request_id, source, machine, token, message
+        )
+    finally:
+        path = None
+        if captured:
+            raw_path = captured.get("path")
+            if raw_path not in (None, ""):
+                path = str(raw_path)
+        _cleanup_screenshot_file(path)
+
+
+def _screenshot_worker_loop(
+    hub: str,
+    sid: str,
+    source: str,
+    machine: str,
+    token: str,
+    poll_interval: float,
+    stop_evt: threading.Event,
+) -> None:
+    seen: set[int] = set()
+    wait_timeout = poll_interval if poll_interval > 0 else 0.1
+    while not stop_evt.is_set():
+        try:
+            pending = client.pending_screenshot_requests(hub, sid, source, token=token)
+        except Exception as exc:  # noqa: BLE001 - polling is best-effort
+            print(f"screenshot request poll failed: {exc}")
+        else:
+            for request in pending:
+                request_id = request.get("id")
+                if not isinstance(request_id, int) or request_id in seen:
+                    continue
+                if _process_screenshot_request(
+                    hub, sid, request_id, source, machine, token
+                ):
+                    seen.add(request_id)
+        if stop_evt.wait(wait_timeout):
+            break
+
+
+def _start_screenshot_worker(
+    hub: str,
+    sid: str,
+    source: str,
+    machine: str,
+    token: str | None,
+    poll_interval: float,
+    stop_evt: threading.Event,
+) -> threading.Thread | None:
+    token = (token or "").strip()
+    if not token:
+        return None
+    worker = threading.Thread(
+        target=_screenshot_worker_loop,
+        args=(hub, sid, source, machine, token, poll_interval, stop_evt),
+        daemon=True,
+    )
+    worker.start()
+    return worker
+
+
 def _capture(hub: str, sid: str, args: argparse.Namespace, machine: str, role: str,
              watch: bool = False) -> str:
     # Launch mode: the collector wraps the client app (Artemis/Moonlight-Qt) - it spawns it and
@@ -526,6 +674,15 @@ def _capture(hub: str, sid: str, args: argparse.Namespace, machine: str, role: s
 
     stop_evt = threading.Event()
     flusher = None
+    screenshot_worker = _start_screenshot_worker(
+        hub,
+        sid,
+        args.source,
+        machine,
+        getattr(args, "screenshot_token", ""),
+        float(getattr(args, "screenshot_poll_interval", DEFAULT_SCREENSHOT_POLL_INTERVAL)),
+        stop_evt,
+    )
     if args.post_interval and args.post_interval > 0:
         def _flush_loop() -> None:
             while not stop_evt.wait(args.post_interval):
@@ -566,6 +723,10 @@ def _capture(hub: str, sid: str, args: argparse.Namespace, machine: str, role: s
     stop_evt.set()
     if flusher:
         flusher.join(timeout=(args.post_interval or 0) + 5)
+    if screenshot_worker:
+        screenshot_worker.join(
+            timeout=float(getattr(args, "screenshot_poll_interval", DEFAULT_SCREENSHOT_POLL_INTERVAL)) + 5
+        )
     if monitor:
         monitor.stop()
     client_ip = conn_monitor.stop() if conn_monitor else None
@@ -621,6 +782,20 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--post-interval", type=float, default=30.0, dest="post_interval",
                    help="push logs + link samples to the hub every N seconds during capture so "
                         "the UI updates live (0=only post once when the capture stops)")
+    p.add_argument(
+        "--screenshot-token",
+        default=os.getenv("ASL_SCREENSHOT_TOKEN", ""),
+        dest="screenshot_token",
+        help="shared secret for screenshot request polling/upload "
+             "(default: ASL_SCREENSHOT_TOKEN env var)",
+    )
+    p.add_argument(
+        "--screenshot-poll-interval",
+        type=float,
+        default=DEFAULT_SCREENSHOT_POLL_INTERVAL,
+        dest="screenshot_poll_interval",
+        help="seconds between screenshot request polls while capturing (default 3)",
+    )
     p.add_argument("--duration", type=int, default=0, help="capture seconds (0=until Enter)")
     p.add_argument("--stop-session", action="store_true", help="mark the session stopped on the hub")
     p.add_argument("--apollo-port", type=int, default=47989,

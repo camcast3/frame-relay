@@ -25,6 +25,8 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px; }
 .btn { display: inline-block; background: var(--panel2); color: var(--fg); border: 1px solid var(--line);
   border-radius: 7px; padding: 7px 12px; cursor: pointer; font-size: 14px; }
 .btn:hover { border-color: var(--accent); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn:disabled:hover { border-color: var(--line); color: var(--fg); text-decoration: none; }
 .btn.primary { background: var(--accent); color: #04121f; border-color: var(--accent); font-weight: 600; }
 .btn.danger:hover { border-color: var(--err); color: var(--err); }
 
@@ -94,6 +96,32 @@ textarea { resize: vertical; }
 .artifacts img { width: 160px; height: 100px; object-fit: cover; border: 1px solid var(--line); border-radius: 6px; }
 .artifacts figcaption { font-size: 12px; color: var(--muted); }
 #artifact-form.row { display: flex; gap: 10px; align-items: center; }
+
+.screenshot-actions { align-items: end; }
+.screenshot-token-field { display: block; flex: 1 1 260px; min-width: 220px; }
+.screenshot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px; }
+@media (max-width: 900px) { .screenshot-grid { grid-template-columns: 1fr; } }
+.screenshot-panel { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.screenshot-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+.screenshot-panel-head h3 { margin: 0; color: var(--fg); }
+.screenshot-preview { background: #0b0e12; border: 1px solid var(--line); border-radius: 8px; min-height: 220px;
+  overflow: hidden; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+.screenshot-preview a { display: block; width: 100%; }
+.screenshot-preview img { display: block; width: 100%; max-height: 360px; object-fit: contain; background: #0b0e12; }
+.screenshot-placeholder { padding: 18px; text-align: center; }
+.screenshot-meta-grid { grid-template-columns: repeat(3, 1fr); margin-bottom: 10px; }
+@media (max-width: 700px) { .screenshot-meta-grid { grid-template-columns: 1fr; } }
+.screenshot-request-state { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.screenshot-request-error { margin: 8px 0 0; color: var(--err); white-space: pre-wrap; }
+.screenshot-request-status { min-height: 1.4em; margin: 10px 0 0; }
+.screenshot-request-status-info { color: var(--muted); }
+.screenshot-request-status-success { color: var(--ok); }
+.screenshot-request-status-error { color: var(--err); }
+.screenshot-status { text-transform: lowercase; }
+.screenshot-status-pending { color: var(--warn); border-color: var(--warn); }
+.screenshot-status-completed { color: var(--ok); border-color: var(--ok); }
+.screenshot-status-failed { color: var(--err); border-color: var(--err); }
+.screenshot-status-none { color: var(--muted); }
 
 .copilot .diagnosis { background: #0b0e12; border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
 .diagnosis pre { white-space: pre-wrap; margin: 0; font-size: 13px; }

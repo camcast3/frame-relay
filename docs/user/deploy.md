@@ -23,7 +23,7 @@ Access control is your firewall's job — this option has no built-in gate.
 
 ```powershell
 # on the watchtower Docker host
-copy .env.example .env    # set ASL_COPILOT_* if you want real Copilot analysis
+copy .env.example .env    # set Copilot and screenshot-request secrets as needed
 docker compose -f docker-compose.lan.yaml up -d --build
 docker compose -f docker-compose.lan.yaml ps
 ```
@@ -42,7 +42,7 @@ The hub runs with `network_mode: service:tailscale` and is published to the tail
 2. Set `TS_AUTHKEY` from the Tailscale admin console; prefer an auth key tagged `tag:apollo-hub`.
 3. Optionally set `ASL_COPILOT_TOKEN` and `ASL_COPILOT_BACKEND=cli` or `sdk`
    (see [copilot-analysis.md](./copilot-analysis.md)).
-4. Apply [`../deploy/tailscale-acl.snippet.hujson`](../deploy/tailscale-acl.snippet.hujson) in the
+4. Apply [`../../deploy/tailscale-acl.snippet.hujson`](../../deploy/tailscale-acl.snippet.hujson) in the
    Tailscale admin console (defines `tag:apollo-hub` / `tag:apollo-collector` and who may reach
    the hub on `tcp:443`).
 5. Start on the watchtower Docker host:
@@ -57,7 +57,7 @@ The hub runs with `network_mode: service:tailscale` and is published to the tail
    no LAN ports.
 
 The proxy mapping (`:443` → `127.0.0.1:8080`, funnel disabled) lives in
-[`../deploy/serve.json`](../deploy/serve.json).
+[`../../deploy/serve.json`](../../deploy/serve.json).
 
 ---
 
@@ -102,7 +102,8 @@ WireGuard.
 
 ## Configuration (`.env`)
 
-All runtime config is environment variables, resolved in [`hub/config.py`](../hub/config.py):
+All runtime settings come from environment variables. The same names are listed in
+[`.env.example`](../../.env.example):
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
@@ -110,7 +111,19 @@ All runtime config is environment variables, resolved in [`hub/config.py`](../hu
 | `ASL_COPILOT_BACKEND` | `mock` | `mock` / `cli` / `sdk` — see [copilot-analysis.md](./copilot-analysis.md). |
 | `ASL_COPILOT_TOKEN` | — | GitHub token with a Copilot entitlement (`cli`/`sdk`). Falls back to `GITHUB_TOKEN`. |
 | `ASL_COPILOT_MODEL` | `auto` | Copilot model name. |
+| `ASL_SCREENSHOT_TOKEN` | — | Shared secret required to queue and fulfill on-demand host/client screenshot requests. Leave blank to disable the feature. |
 | `ASL_DATA_DIR` | `/data` (Docker) · `./data` (direct) | Where the SQLite DB + artifacts live. |
 | `ASL_HOST` / `ASL_PORT` | `0.0.0.0` / `8080` | Bind address/port for `python -m hub` (and inside the container). |
 
 Data lives under `data/` and secrets in `.env` — both are gitignored; never commit either.
+
+Generate a screenshot token, store it in the hub's `.env`, and set the identical
+`ASL_SCREENSHOT_TOKEN` environment variable on every collector-capable host/client:
+
+```powershell
+$token = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+$token
+```
+
+Screenshot requests are disabled when the hub token is blank. Xbox and other agent-less clients
+still require manual screenshot upload.

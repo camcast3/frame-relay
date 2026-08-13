@@ -4,8 +4,8 @@ Confirmed sources the collectors read from. **Turn logging up before testing** a
 every machine runs **NTP** — the hub correlates host and client logs by timestamp.
 
 > **Auto-detection:** omit `--log` / `-LogPath` and the collector resolves the log from
-> `--source`/`--role` per platform (`collectors/asl_collector/logfind.py`). The paths below are
-> exactly what it looks for; pass `--log` only to override or when a path isn't listed.
+> `--source`/`--role` for the platform you are using. The paths below are the default locations it
+> checks; pass `--log` only to override or when your path is different.
 
 ## Apollo / Sunshine host (Windows)
 - **Log file:** `log_path` in the Apollo config (default `sunshine.log` in Apollo's config
@@ -60,7 +60,7 @@ Both are Qt apps that write a **per-run** diagnostic log into `%TEMP%`:
   [agentless-capture.md](./agentless-capture.md).
 
 ## Link / access-point detection
-Captured automatically by the collectors (see `collectors/asl_collector/linkinfo.py`):
+Captured automatically by the collectors:
 - **Windows:** `netsh wlan show interfaces` (SSID/BSSID/band/channel/radio/signal/rate) and
   `Get-NetAdapter` (wired link speed).
 - **Linux:** `iw dev <dev> link` (BSSID/freq/signal dBm/bitrate), `nmcli` (fallback),
@@ -80,4 +80,4 @@ Captured automatically by the collectors (see `collectors/asl_collector/linkinfo
   - host: `iperf3 -s`
   - client: `python network/iperf_runner.py --host <host-ip> --hub-url <hub>`
     (omit `--session-id` and it attaches to the newest active session)
-- Good path: **loss < 5%, jitter < 1 ms**. Driven by `network/iperf_runner.py`.
+- Good path: **loss < 5%, jitter < 1 ms**.

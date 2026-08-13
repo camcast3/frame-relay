@@ -28,6 +28,7 @@ services:
       ASL_COPILOT_BACKEND: ${ASL_COPILOT_BACKEND:-mock}
       ASL_COPILOT_TOKEN: ${ASL_COPILOT_TOKEN:-}
       ASL_COPILOT_MODEL: ${ASL_COPILOT_MODEL:-auto}
+      ASL_SCREENSHOT_TOKEN: ${ASL_SCREENSHOT_TOKEN:-}
     volumes:
       - hub-data:/data
 
