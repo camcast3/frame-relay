@@ -6,14 +6,29 @@ import secrets
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from pydantic import BaseModel
+
 from . import db
 from .models import (
+    DisplaySampleIn,
     LinkSampleIn,
     LogChunkIn,
     NetTestIn,
     SessionCreate,
+    SessionObservationPatch,
     SessionUpdate,
 )
+
+SESSION_JSON_FIELDS = frozenset(db.SESSION_JSON_COLUMNS)
+OBSERVATION_SCALAR_FIELDS = (
+    "comparison_label",
+    "apollo_app",
+    "game_title",
+    "client_role",
+    "client_platform",
+    "client_version",
+)
+COMPARISON_REQUESTED_FIELDS = ("codec", "resolution", "fps", "bitrate_mbps", "hdr")
 
 
 def _now() -> str:
@@ -25,6 +40,89 @@ def new_session_id() -> str:
     return f"{stamp}-{secrets.token_hex(2)}"
 
 
+def _explicit_model_fields(model: BaseModel) -> dict[str, Any]:
+    return {name: getattr(model, name) for name in model.model_fields_set}
+
+
+def _json_value(value: Any) -> Any:
+    if isinstance(value, BaseModel):
+        return {name: _json_value(getattr(value, name)) for name in value.model_fields_set}
+    if isinstance(value, dict):
+        return {name: _json_value(item) for name, item in value.items()}
+    if isinstance(value, list):
+        return [_json_value(item) for item in value]
+    return value
+
+
+def _json_column_payload(value: Any) -> Any:
+    if value is None:
+        return {}
+    return _json_value(value)
+
+
+def _serialize_session_value(key: str, value: Any) -> Any:
+    if key in SESSION_JSON_FIELDS:
+        return json.dumps(_json_column_payload(value))
+    if key == "hdr":
+        return 1 if value else 0
+    return value
+
+
+def _apply_session_updates(session_id: str, fields: dict[str, Any]) -> None:
+    if not fields:
+        return
+    sets, values = [], []
+    for key, value in fields.items():
+        sets.append(f"{key}=?")
+        values.append(_serialize_session_value(key, value))
+    values.append(session_id)
+    with db.db() as conn:
+        conn.execute(f"UPDATE sessions SET {', '.join(sets)} WHERE id=?", values)
+
+
+def _is_blank(value: Any) -> bool:
+    return value is None or (isinstance(value, str) and value.strip() == "")
+
+
+def _has_value(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return value.strip() != ""
+    if isinstance(value, (dict, list)):
+        return bool(value)
+    return True
+
+
+def _merge_missing(existing: dict[str, Any], incoming: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(existing or {})
+    for key, incoming_value in incoming.items():
+        if not _has_value(incoming_value):
+            continue
+        if isinstance(incoming_value, dict):
+            existing_value = merged.get(key)
+            if isinstance(existing_value, dict):
+                merged[key] = _merge_missing(existing_value, incoming_value)
+            elif key not in merged or _is_blank(existing_value):
+                merged[key] = _merge_missing({}, incoming_value)
+            continue
+        if key not in merged or _is_blank(merged.get(key)):
+            merged[key] = incoming_value
+    return merged
+
+
+def _collect_distinct(values: list[Any]) -> list[Any]:
+    distinct: list[Any] = []
+    for value in values:
+        if not _has_value(value):
+            continue
+        if isinstance(value, str):
+            value = value.strip()
+        if value not in distinct:
+            distinct.append(value)
+    return distinct
+
+
 # --- sessions -------------------------------------------------------------------
 
 def create_session(data: SessionCreate) -> dict[str, Any]:
@@ -33,13 +131,20 @@ def create_session(data: SessionCreate) -> dict[str, Any]:
     with db.db() as conn:
         conn.execute(
             """INSERT INTO sessions
-               (id, name, status, host, client, network_path, codec, resolution, fps,
-                bitrate_mbps, hdr, encoder_settings, outcome, notes, created_at, started_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               (id, name, status, host, client, comparison_label, apollo_app, game_title,
+                client_role, client_platform, client_version, network_path, codec,
+                resolution, fps, bitrate_mbps, hdr, encoder_settings, requested_settings,
+                hdr_details, visual_assessment, outcome, notes, created_at, started_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
-                sid, data.name, "active", data.host, data.client, data.network_path,
-                data.codec, data.resolution, data.fps, data.bitrate_mbps,
-                1 if data.hdr else 0, json.dumps(data.encoder_settings or {}),
+                sid, data.name, "active", data.host, data.client, data.comparison_label,
+                data.apollo_app, data.game_title, data.client_role, data.client_platform,
+                data.client_version, data.network_path, data.codec, data.resolution,
+                data.fps, data.bitrate_mbps, 1 if data.hdr else 0,
+                json.dumps(_json_column_payload(data.encoder_settings)),
+                json.dumps(_json_column_payload(data.requested_settings)),
+                json.dumps(_json_column_payload(data.hdr_details)),
+                json.dumps(_json_column_payload(data.visual_assessment)),
                 "unknown", data.notes or "", now, now,
             ),
         )
@@ -80,20 +185,40 @@ def get_session(session_id: str) -> Optional[dict[str, Any]]:
 
 
 def update_session(session_id: str, data: SessionUpdate) -> Optional[dict[str, Any]]:
-    fields = data.model_dump(exclude_unset=True)
+    fields = _explicit_model_fields(data)
     if not fields:
         return get_session(session_id)
-    sets, values = [], []
-    for key, val in fields.items():
-        if key == "encoder_settings":
-            val = json.dumps(val or {})
-        elif key == "hdr":
-            val = 1 if val else 0
-        sets.append(f"{key}=?")
-        values.append(val)
-    values.append(session_id)
-    with db.db() as conn:
-        conn.execute(f"UPDATE sessions SET {', '.join(sets)} WHERE id=?", values)
+    _apply_session_updates(session_id, fields)
+    return get_session(session_id)
+
+
+def merge_session_observations(
+    session_id: str,
+    patch: SessionObservationPatch,
+) -> Optional[dict[str, Any]]:
+    session = get_session(session_id)
+    if session is None:
+        return None
+
+    updates: dict[str, Any] = {}
+    for field in OBSERVATION_SCALAR_FIELDS:
+        incoming = getattr(patch, field)
+        if _has_value(incoming) and _is_blank(session.get(field)):
+            updates[field] = incoming
+
+    for field in ("requested_settings", "hdr_details"):
+        incoming = _json_column_payload(getattr(patch, field))
+        if not incoming:
+            continue
+        existing = session.get(field)
+        existing_dict = existing if isinstance(existing, dict) else {}
+        merged = _merge_missing(existing_dict, incoming)
+        if merged != existing_dict:
+            updates[field] = merged
+
+    if not updates:
+        return session
+    _apply_session_updates(session_id, updates)
     return get_session(session_id)
 
 
@@ -167,6 +292,59 @@ def get_link_samples(session_id: str) -> list[dict[str, Any]]:
     return db.rows_to_dicts(rows)
 
 
+def add_display_samples(session_id: str, samples: list[DisplaySampleIn]) -> int:
+    now = _now()
+    n = 0
+    with db.db() as conn:
+        for sample in samples:
+            conn.execute(
+                """INSERT INTO display_samples
+                   (session_id, source, machine, phase, adapter_id, adapter_device_path,
+                    source_id, target_id, source_name, friendly_name, device_path,
+                    is_virtual, "primary", width, height, refresh_hz, rotation,
+                    scaling, output_technology, hdr_supported, hdr_enabled,
+                    bits_per_channel, color_encoding, sampled_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    session_id,
+                    sample.source,
+                    sample.machine,
+                    sample.phase,
+                    sample.adapter_id,
+                    sample.adapter_device_path,
+                    sample.source_id,
+                    sample.target_id,
+                    sample.source_name,
+                    sample.friendly_name,
+                    sample.device_path,
+                    sample.is_virtual,
+                    sample.primary,
+                    sample.width,
+                    sample.height,
+                    sample.refresh_hz,
+                    sample.rotation,
+                    sample.scaling,
+                    sample.output_technology,
+                    sample.hdr_supported,
+                    sample.hdr_enabled,
+                    sample.bits_per_channel,
+                    sample.color_encoding,
+                    sample.sampled_at or now,
+                ),
+            )
+            n += 1
+    return n
+
+
+def get_display_samples(session_id: str) -> list[dict[str, Any]]:
+    with db.db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM display_samples WHERE session_id=? ORDER BY sampled_at ASC, id ASC",
+            (session_id,),
+        ).fetchall()
+    return db.rows_to_dicts(rows)
+
+
 def add_net_test(session_id: str, test: NetTestIn) -> int:
     with db.db() as conn:
         cur = conn.execute(
@@ -234,6 +412,7 @@ def get_bundle(session_id: str) -> Optional[dict[str, Any]]:
         "host_logs": get_log_chunks(session_id, "host"),
         "client_logs": get_log_chunks(session_id, "client"),
         "link_samples": get_link_samples(session_id),
+        "display_samples": get_display_samples(session_id),
         "net_tests": get_net_tests(session_id),
         "artifacts": get_artifacts(session_id),
         "chat": get_chat(session_id),
@@ -253,3 +432,36 @@ def get_related_sessions(session_id: str, limit: int = 5) -> list[dict[str, Any]
             (session_id, s.get("host"), s.get("client"), limit),
         ).fetchall()
     return db.rows_to_dicts(rows)
+
+
+def get_comparison_sessions(comparison_label: str) -> list[dict[str, Any]]:
+    with db.db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM sessions WHERE comparison_label=? ORDER BY created_at ASC",
+            (comparison_label,),
+        ).fetchall()
+    return db.rows_to_dicts(rows)
+
+
+def comparison_compatibility(sessions: list[dict[str, Any]]) -> dict[str, Any]:
+    mismatches: dict[str, Any] = {}
+    for field in ("host", "apollo_app", "game_title", "network_path"):
+        values = _collect_distinct([session.get(field) for session in sessions])
+        if len(values) > 1:
+            mismatches[field] = values
+
+    requested_mismatches: dict[str, list[Any]] = {}
+    for field in COMPARISON_REQUESTED_FIELDS:
+        values = _collect_distinct([
+            (session.get("requested_settings") or {}).get(field)
+            if isinstance(session.get("requested_settings"), dict)
+            else None
+            for session in sessions
+        ])
+        if len(values) > 1:
+            requested_mismatches[field] = values
+
+    if requested_mismatches:
+        mismatches["requested_settings"] = requested_mismatches
+
+    return {"compatible": not mismatches, "mismatches": mismatches}

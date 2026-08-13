@@ -3,8 +3,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from .. import service
-from ..models import SessionCreate, SessionUpdate
+from .. import display_validation, service
+from ..models import SessionCreate, SessionObservationPatch, SessionUpdate
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
@@ -25,11 +25,26 @@ def list_all(awaiting_client: bool = False, awaiting_host: bool = False):
     return service.list_sessions(awaiting_client=awaiting_client, awaiting_host=awaiting_host)
 
 
+@router.get("/comparisons/{comparison_label}")
+def comparison_detail(comparison_label: str):
+    sessions = service.get_comparison_sessions(comparison_label)
+    if not sessions:
+        raise HTTPException(404, "comparison not found")
+    return {
+        "label": comparison_label,
+        "sessions": sessions,
+        "compatibility": service.comparison_compatibility(sessions),
+    }
+
+
 @router.get("/{session_id}")
 def detail(session_id: str):
     bundle = service.get_bundle(session_id)
     if bundle is None:
         raise HTTPException(404, "session not found")
+    bundle["display_validation"] = display_validation.summarize(
+        bundle["session"], bundle.get("display_samples", [])
+    )
     return bundle
 
 
@@ -38,6 +53,13 @@ def update(session_id: str, data: SessionUpdate):
     if service.get_session(session_id) is None:
         raise HTTPException(404, "session not found")
     return service.update_session(session_id, data)
+
+
+@router.post("/{session_id}/observations")
+def merge_observations(session_id: str, data: SessionObservationPatch):
+    if service.get_session(session_id) is None:
+        raise HTTPException(404, "session not found")
+    return service.merge_session_observations(session_id, data)
 
 
 @router.post("/{session_id}/stop")

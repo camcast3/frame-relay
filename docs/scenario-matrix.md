@@ -1,7 +1,8 @@
 # Scenario matrix (template)
 
 Systematically walk local → remote and Ethernet → Wi-Fi so limitations are reproducible.
-Create one hub session per row; the presets live in `network/scenarios.py`.
+Create one hub session per row; the presets live in `network/scenarios.py`. When comparing
+clients, reuse an explicit comparison/test-case label for the matched runs.
 
 | # | Network path      | Client link      | Codec | Res/FPS   | Bitrate | HDR | Expected | Result | Session id |
 |---|-------------------|------------------|-------|-----------|---------|-----|----------|--------|------------|
@@ -22,6 +23,15 @@ For each row:
 4. Stream for a few minutes; try to trigger the limitation (movement, load, roaming). Logs +
    link samples post live (~30s), so the session page fills in while you watch.
 5. Stop the client, add your **notes**, set the **outcome**, then click **Analyze**.
+
+## Moonlight vs Artemis matched comparison
+
+Vary only the client app/platform. Keep the same host, Apollo application preset, game/process,
+requested codec/resolution/FPS/bitrate/HDR mode, and network path. Give every run the same
+test-case label; the comparison page reports any recorded mismatch before treating the sessions
+as comparable. Capture the same in-game scene and overlay where possible. Screenshots and
+operator ratings are useful for washed-out color, clipping, black-level, or brightness
+differences, but are subjective without calibrated capture hardware.
 
 ## What each path stresses
 - **local-LAN:** encoder/decoder latency, Wi-Fi quality, NIC-speed mismatch (buffer overrun).

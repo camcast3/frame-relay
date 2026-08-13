@@ -6,6 +6,12 @@ A troubleshooting + test harness for **Apollo/Sunshine** (host) ↔ **Moonlight/
 Each test is a **session** that links, in one place:
 - the **host** (Apollo) log and the **client** (Moonlight/Artemis) log, shown **side-by-side**,
 - the **scenario/config** (network path, codec, resolution, fps, bitrate, HDR, encoder knobs),
+- the **stream identity** (Apollo application preset, game/process, client app/platform/version)
+  and **client-requested vs effective** settings,
+- a structured **HDR pipeline**, manual visual assessment, and matched Moonlight-vs-Artemis
+  comparisons,
+- Windows host **display-topology evidence** from `QueryDisplayConfig` before/during/after the
+  session, validating the virtual target, mode, refresh rate, HDR state, and topology restoration,
 - **network diagnostics** (iperf3),
 - **auto-detected link/AP info** — Ethernet vs Wi-Fi, and on Wi-Fi the access point
   (SSID + **BSSID**), band/channel/RSSI/rate — **sampled through the session** to catch
@@ -88,6 +94,12 @@ capture (codec/resolution/fps/bitrate/HDR from the log; client IP + network path
 connection) and never overrides values you set yourself. For a live **client** log, let the
 collector **wrap** Artemis/Moonlight (`-LaunchClient`, which finds the app for `--role`) so it
 captures the app's real-time stderr — its `%TEMP%` log file is buffered and only flushes in bursts.
+
+For a controlled client comparison, give matched runs the same **comparison/test-case label** and
+hold the host, Apollo preset/game, requested settings, and network path constant. The comparison
+page flags mismatches before showing Moonlight/Artemis HDR evidence side by side. Log evidence and
+screenshots can reveal negotiation/fallback and obvious visual differences, but objective color
+accuracy requires calibrated external capture hardware.
 
 Full walkthrough (local vs remote WireGuard): [docs/host-client-setup.md](./docs/host-client-setup.md).
 

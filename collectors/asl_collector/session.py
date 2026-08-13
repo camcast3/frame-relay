@@ -21,15 +21,26 @@ from __future__ import annotations
 
 import argparse
 import glob
+import json
 import platform
 import subprocess
 import sys
 import threading
 import time
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
-from . import appfind, client, conninfo, hostmeta, logslice, logfind
+from . import (
+    __version__,
+    appfind,
+    client,
+    clientmeta,
+    conninfo,
+    displayprobe,
+    hostmeta,
+    logslice,
+    logfind,
+)
 from .netmon import LinkMonitor
 
 
@@ -55,6 +66,74 @@ def _expand(paths: list[str]) -> list[str]:
     return out
 
 
+def _platform_name() -> str:
+    system = (platform.system() or "").strip()
+    return "macOS" if system == "Darwin" else (system or sys.platform)
+
+
+def _log_meta(role: str, capture_method: str, capture_path: str) -> dict[str, str]:
+    return {
+        "platform": _platform_name(),
+        "role": role,
+        "collector_version": __version__,
+        "capture_method": capture_method,
+        "capture_path": capture_path,
+    }
+
+
+def _display_payload_marker(samples: list[dict[str, Any]]) -> str:
+    return json.dumps(
+        [{k: v for k, v in sample.items() if k != "sampled_at"} for sample in samples],
+        sort_keys=True,
+    )
+
+
+def _display_summary(samples: list[dict[str, Any]]) -> str:
+    primary = next((s for s in samples if s.get("primary")), None)
+    primary_name = None
+    if primary:
+        primary_name = primary.get("friendly_name") or primary.get("source_name")
+    bits = [f"{len(samples)} path(s)"]
+    virtual = sum(1 for s in samples if s.get("is_virtual") is True)
+    hdr_enabled = sum(1 for s in samples if s.get("hdr_enabled") is True)
+    if virtual:
+        bits.append(f"{virtual} virtual")
+    if hdr_enabled:
+        bits.append(f"{hdr_enabled} HDR-on")
+    if primary_name:
+        bits.append(f"primary={primary_name}")
+    return ", ".join(bits)
+
+
+def _build_observations(source: str, role: str, log_text: str,
+                        args: argparse.Namespace) -> dict[str, object]:
+    payload: dict[str, object] = {}
+    if log_text.strip():
+        if source == "host":
+            parsed = hostmeta.parse_apollo_metadata(log_text)
+        else:
+            parsed = clientmeta.parse_client_metadata(log_text, role)
+        for field in ("apollo_app", "game_title", "client_version"):
+            value = parsed.get(field)
+            if value not in (None, ""):
+                payload[field] = value
+        requested = parsed.get("requested_settings")
+        if isinstance(requested, dict) and requested:
+            payload["requested_settings"] = dict(requested)
+        hdr_details = parsed.get("hdr_details")
+        if isinstance(hdr_details, dict) and hdr_details:
+            payload["hdr_details"] = dict(hdr_details)
+    if source == "client" and role in ("moonlight", "artemis"):
+        payload["client_role"] = role
+        payload.setdefault("client_platform", _platform_name())
+    for field in ("comparison_label", "apollo_app", "game_title",
+                  "client_platform", "client_version"):
+        value = getattr(args, field, None)
+        if value not in (None, ""):
+            payload[field] = value
+    return payload
+
+
 def _enrich_host(hub: str, sid: str, log_text: str, client_ip: Optional[str],
                  args: argparse.Namespace) -> None:
     """Fill blank session metadata from the Apollo log + the live client connection.
@@ -68,9 +147,9 @@ def _enrich_host(hub: str, sid: str, log_text: str, client_ip: Optional[str],
     current = client.get_session(hub, sid) or {}
     patch: dict[str, object] = {}
     for field in ("codec", "resolution", "fps", "bitrate_mbps"):
-        if derived.get(field) is not None and getattr(args, field) is None and not current.get(field):
+        if derived.get(field) is not None and not current.get(field):
             patch[field] = derived[field]
-    if derived.get("hdr") and "--hdr" not in sys.argv and not current.get("hdr"):
+    if derived.get("hdr") and not current.get("hdr"):
         patch["hdr"] = True
     if client_ip and args.client is None and not current.get("client"):
         patch["client"] = client_ip
@@ -167,12 +246,33 @@ def run(args: argparse.Namespace) -> str:
             # Default host/client to this machine's name based on which side we're capturing.
             default_host = args.host or (machine if args.source == "host" else None)
             default_client = args.client or (machine if args.source == "client" else None)
-            sid = client.create_session(hub, {
+            requested = {
+                key: value for key, value in {
+                    "codec": args.codec,
+                    "resolution": args.resolution,
+                    "fps": args.fps,
+                    "bitrate_mbps": args.bitrate_mbps,
+                    "hdr": bool(args.hdr),
+                }.items()
+                if value is not None
+            }
+            payload = {
                 "name": args.name, "host": default_host, "client": default_client,
-                "network_path": args.network_path, "codec": args.codec,
-                "resolution": args.resolution, "fps": args.fps,
-                "bitrate_mbps": args.bitrate_mbps, "hdr": args.hdr,
-            })
+                "network_path": args.network_path,
+                "comparison_label": args.comparison_label,
+                "apollo_app": args.apollo_app,
+                "game_title": args.game_title,
+                "client_role": role if args.source == "client" else None,
+                "client_platform": (
+                    args.client_platform or _platform_name()
+                    if args.source == "client" else args.client_platform
+                ),
+                "client_version": args.client_version,
+                "requested_settings": requested,
+            }
+            sid = client.create_session(
+                hub, {key: value for key, value in payload.items() if value is not None}
+            )
             print(f"created session {sid}")
     return _capture(hub, sid, args, machine, role)
 
@@ -306,9 +406,42 @@ def _capture(hub: str, sid: str, args: argparse.Namespace, machine: str, role: s
     start = _now()
     posted_offsets = {path: logslice.file_offset(path) for path in logs}
     posted_any = {path: False for path in logs}
-    host_log_parts: list[str] = []
+    observed_log_parts: list[str] = []
     posted_link_idx = 0
+    observation_marker = ""
     flush_lock = threading.Lock()
+    display_enabled = args.source == "host" and platform.system() == "Windows"
+    pending_displays: list[dict[str, Any]] = []
+    display_marker = ""
+
+    def _queue_display_snapshot(phase: str) -> None:
+        nonlocal display_marker
+        if not display_enabled:
+            return
+        snapshots = displayprobe.detect()
+        if not snapshots:
+            return
+        for sample in snapshots:
+            sample["machine"] = machine
+            sample["phase"] = phase
+        marker = _display_payload_marker(snapshots)
+        if marker == display_marker:
+            return
+        pending_displays.extend(snapshots)
+        display_marker = marker
+        print(f"queued display snapshot ({phase}): {_display_summary(snapshots)}")
+
+    def _post_display_samples() -> None:
+        if not pending_displays:
+            return
+        batch = list(pending_displays)
+        added = client.post_displays(hub, sid, batch)
+        del pending_displays[:len(batch)]
+        phases = ",".join(dict.fromkeys(str(sample.get("phase") or "?") for sample in batch))
+        print(f"posted {added} display samples ({phases}; {_display_summary(batch)})")
+
+    if not watch:
+        _queue_display_snapshot("before")
 
     if watch:
         # The session already existed before we noticed it, so back-fill the log from when it
@@ -319,10 +452,10 @@ def _capture(hub: str, sid: str, args: argparse.Namespace, machine: str, role: s
             for path in logs:
                 back = logslice.slice_file(path, started, _now())
                 if back.strip():
-                    client.post_log(hub, sid, args.source, role, back, machine)
+                    client.post_log(hub, sid, args.source, role, back, machine,
+                                    meta=_log_meta(role, "file", path))
                     posted_any[path] = True
-                    if args.source == "host":
-                        host_log_parts.append(back)
+                    observed_log_parts.append(back)
                     print(f"back-filled {len(back.splitlines())} log lines from {path}")
 
     monitor = None
@@ -336,7 +469,7 @@ def _capture(hub: str, sid: str, args: argparse.Namespace, machine: str, role: s
 
     def flush(final: bool = False) -> None:
         """Post any log bytes / stderr / link samples not sent yet. Safe to call repeatedly."""
-        nonlocal posted_link_idx
+        nonlocal observation_marker, posted_link_idx
         with flush_lock:
             for path in logs:
                 text, new_off = logslice.read_new(path, posted_offsets.get(path, 0))
@@ -349,21 +482,21 @@ def _capture(hub: str, sid: str, args: argparse.Namespace, machine: str, role: s
                         continue
                 elif not text.strip():
                     continue
-                client.post_log(hub, sid, args.source, role, text, machine)
+                client.post_log(hub, sid, args.source, role, text, machine,
+                                meta=_log_meta(role, "file", path))
                 posted_any[path] = True
                 print(f"posted {len(text.splitlines())} log lines from {path}")
-                if args.source == "host":
-                    host_log_parts.append(text)
+                observed_log_parts.append(text)
             if stderr_buf is not None:
                 with stderr_lock:
                     pending_lines = stderr_buf[:]
                     del stderr_buf[:]
                 if pending_lines:
                     text = "".join(pending_lines)
-                    client.post_log(hub, sid, args.source, role, text, machine)
+                    client.post_log(hub, sid, args.source, role, text, machine,
+                                    meta=_log_meta(role, "launch-stderr", launch))
                     print(f"posted {len(pending_lines)} log lines from <{launch} stderr>")
-                    if args.source == "host":
-                        host_log_parts.append(text)
+                    observed_log_parts.append(text)
             if monitor:
                 pending = monitor.samples[posted_link_idx:]
                 if pending:
@@ -371,11 +504,23 @@ def _capture(hub: str, sid: str, args: argparse.Namespace, machine: str, role: s
                     posted_link_idx += len(pending)
                     aps = {s.get("bssid") for s in pending if s.get("bssid")}
                     print(f"posted {added} link samples ({len(aps)} distinct AP(s))")
+            if not final:
+                _queue_display_snapshot("during")
+            _post_display_samples()
+            try:
+                payload = _build_observations(args.source, role, "\n".join(observed_log_parts), args)
+                marker = json.dumps(payload, sort_keys=True) if payload else ""
+                if payload and (final or marker != observation_marker):
+                    client.post_observations(hub, sid, payload)
+                    observation_marker = marker
+                    print(f"posted observations: {', '.join(sorted(payload))}")
+            except Exception as e:  # noqa: BLE001 - observation posting is best-effort
+                print(f"observation post failed: {e}")
             # Live-fill blank session metadata (client IP / path / codec…) during capture, not
             # just on stop. _enrich_host re-reads the session each call and only fills blanks.
             if args.source == "host" and conn_monitor is not None:
                 try:
-                    _enrich_host(hub, sid, "\n".join(host_log_parts), conn_monitor.current(), args)
+                    _enrich_host(hub, sid, "\n".join(observed_log_parts), conn_monitor.current(), args)
                 except Exception:  # noqa: BLE001 - enrichment is best-effort
                     pass
 
@@ -394,6 +539,8 @@ def _capture(hub: str, sid: str, args: argparse.Namespace, machine: str, role: s
     live = "live-posting every %ss" % args.post_interval if flusher else "posting on stop"
     print(f"capturing session {sid} ({args.source}/{role}) on {machine} - "
           f"{'sampling link every %ss' % args.interval if monitor else 'no link sampling'}; {live}")
+    _queue_display_snapshot("during")
+    _post_display_samples()
     try:
         if watch:
             print("capturing until the session is stopped on the hub, or the next one starts "
@@ -426,10 +573,12 @@ def _capture(hub: str, sid: str, args: argparse.Namespace, machine: str, role: s
         print(f"detected client {client_ip} -> {conninfo.classify_network_path(client_ip, args.wg_subnet)}")
 
     flush(final=True)
-    host_log_text = "\n".join(host_log_parts)
+    _queue_display_snapshot("after")
+    _post_display_samples()
+    observed_log_text = "\n".join(observed_log_parts)
 
-    if args.source == "host" and (host_log_text.strip() or client_ip):
-        _enrich_host(hub, sid, host_log_text, client_ip, args)
+    if args.source == "host" and (observed_log_text.strip() or client_ip):
+        _enrich_host(hub, sid, observed_log_text, client_ip, args)
 
     if args.stop_session:
         client.stop_session(hub, sid)
@@ -479,10 +628,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--wg-subnet", action="append", default=[], dest="wg_subnet",
                    help="WireGuard client subnet (repeatable); a client in it is classified "
                         "remote-WireGuard instead of local-LAN (default: 192.168.2.0/24)")
-    # metadata used only with --create
+    # session metadata / observations
     p.add_argument("--name")
     p.add_argument("--host")
     p.add_argument("--client")
+    p.add_argument("--comparison-label", dest="comparison_label")
+    p.add_argument("--apollo-app", dest="apollo_app")
+    p.add_argument("--game-title", dest="game_title")
+    p.add_argument("--client-platform", dest="client_platform")
+    p.add_argument("--client-version", dest="client_version")
     p.add_argument("--network-path", choices=["local-LAN", "remote-WireGuard", "remote-Tailscale", "remote-WAN"])
     p.add_argument("--codec")
     p.add_argument("--resolution")

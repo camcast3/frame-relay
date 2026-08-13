@@ -7,7 +7,7 @@
 <table id="sessions-table" class="grid">
   <thead>
     <tr><th>Session</th><th>Status</th><th>Outcome</th><th>Path</th><th>Host → Client</th>
-        <th>Codec</th><th>Created (UTC)</th></tr>
+        <th>Test case</th><th>Codec</th><th>Created (UTC)</th></tr>
   </thead>
   <tbody id="sessions-tbody">
   {% for s in sessions %}
@@ -17,6 +17,7 @@
       <td><span class="pill outcome-{{ s.outcome }}">{{ s.outcome }}</span></td>
       <td>{{ s.network_path or "—" }}</td>
       <td>{{ s.host or "?" }} → {{ s.client or "?" }}</td>
+      <td>{{ s.comparison_label or "—" }}</td>
       <td>{{ s.codec or "—" }}{% if s.hdr %} · HDR{% endif %}</td>
       <td class="mono">{{ s.created_at[:19] }}</td>
     </tr>

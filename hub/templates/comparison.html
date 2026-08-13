@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{{ label }} comparison · Apollo Streaming Lab{% endblock %}
+{% macro yn(value) -%}
+  {{ "yes" if value is sameas true else ("no" if value is sameas false else "—") }}
+{%- endmacro %}
+{% block content %}
+<div class="crumb"><a href="/">← Sessions</a></div>
+<h1>Client comparison: {{ label }}</h1>
+{% if compatibility.compatible %}
+  <p class="compat-ok">Comparable: the recorded controlled settings match.</p>
+{% else %}
+  <div class="compat-warn"><b>Not fully comparable.</b> Resolve or account for these mismatches:
+    <ul>{% for field, values in compatibility.mismatches.items() %}
+      <li><b>{{ field }}</b>: {{ values | join(", ") }}</li>
+    {% endfor %}</ul>
+  </div>
+{% endif %}
+
+<section class="card compare-scroll">
+  <table class="grid small compare-table">
+    <thead><tr><th>Evidence</th>{% for s in sessions %}
+      <th><a href="/sessions/{{ s.id }}">{{ s.client_role or s.client or s.id }}</a><br>
+        <span class="muted">{{ s.client_platform or "unknown platform" }}{% if s.client_version %} · {{ s.client_version }}{% endif %}</span></th>
+    {% endfor %}</tr></thead>
+    <tbody>
+      <tr><th>Apollo preset</th>{% for s in sessions %}<td>{{ s.apollo_app or "—" }}</td>{% endfor %}</tr>
+      <tr><th>Game / process</th>{% for s in sessions %}<td>{{ s.game_title or "—" }}</td>{% endfor %}</tr>
+      <tr><th>Path</th>{% for s in sessions %}<td>{{ s.network_path or "—" }}</td>{% endfor %}</tr>
+      <tr><th>Requested codec</th>{% for s in sessions %}<td>{{ (s.requested_settings or {}).codec or "—" }}</td>{% endfor %}</tr>
+      <tr><th>Effective codec</th>{% for s in sessions %}<td>{{ s.codec or "—" }}</td>{% endfor %}</tr>
+      <tr><th>Requested resolution/FPS</th>{% for s in sessions %}<td>{{ (s.requested_settings or {}).resolution or "—" }} @ {{ (s.requested_settings or {}).fps or "—" }}</td>{% endfor %}</tr>
+      <tr><th>Effective resolution/FPS</th>{% for s in sessions %}<td>{{ s.resolution or "—" }} @ {{ s.fps or "—" }}</td>{% endfor %}</tr>
+      <tr><th>Requested/effective bitrate</th>{% for s in sessions %}<td>{{ (s.requested_settings or {}).bitrate_mbps or "—" }} / {{ s.bitrate_mbps or "—" }} Mbps</td>{% endfor %}</tr>
+      <tr><th>HDR requested</th>{% for s in sessions %}<td>{{ yn((s.hdr_details or {}).requested) }}</td>{% endfor %}</tr>
+      <tr><th>Host display / encoded HDR</th>{% for s in sessions %}<td>{{ yn((s.hdr_details or {}).host_display_hdr) }} / {{ yn((s.hdr_details or {}).encoded_hdr) }}</td>{% endfor %}</tr>
+      <tr><th>Color / transfer / depth</th>{% for s in sessions %}<td>{{ (s.hdr_details or {}).color_primaries or "—" }} / {{ (s.hdr_details or {}).transfer_function or "—" }} / {{ (s.hdr_details or {}).bit_depth or "—" }}</td>{% endfor %}</tr>
+      <tr><th>Decoder / renderer</th>{% for s in sessions %}<td>{{ (s.hdr_details or {}).client_decoder or "—" }} / {{ (s.hdr_details or {}).client_renderer or "—" }}</td>{% endfor %}</tr>
+      <tr><th>Client display HDR</th>{% for s in sessions %}<td>{{ yn((s.hdr_details or {}).client_display_hdr) }}</td>{% endfor %}</tr>
+      <tr><th>Tone mapping / result</th>{% for s in sessions %}<td>{{ (s.hdr_details or {}).tone_mapping or "—" }} / {{ (s.hdr_details or {}).status or "unknown" }}</td>{% endfor %}</tr>
+      <tr><th>Visual rating</th>{% for s in sessions %}<td>{{ (s.visual_assessment or {}).rating or "—" }}/5</td>{% endfor %}</tr>
+      <tr><th>Visual notes</th>{% for s in sessions %}<td>{{ (s.visual_assessment or {}).notes or "—" }}</td>{% endfor %}</tr>
+      <tr><th>Outcome</th>{% for s in sessions %}<td><span class="pill outcome-{{ s.outcome }}">{{ s.outcome }}</span></td>{% endfor %}</tr>
+    </tbody>
+  </table>
+</section>
+<p class="muted small">A matched comparison controls the host, Apollo preset/game, requested
+settings, and network path. Screenshot and visual ratings are subjective unless external
+capture hardware and calibrated test patterns are used.</p>
+{% endblock %}

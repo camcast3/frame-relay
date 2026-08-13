@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% set s = b.session %}
+{% macro state(value) -%}
+  {{ "yes" if value is sameas true or value == 1 else ("no" if value is sameas false or value == 0 else "unknown") }}
+{%- endmacro %}
 {% block title %}{{ s.name or s.id }} · Apollo Streaming Lab{% endblock %}
 {% block content %}
 <div id="session" data-id="{{ s.id }}" data-status="{{ s.status }}">
@@ -11,8 +14,8 @@
     <div class="meta-grid">
       <div><span class="k">Path</span><span id="meta-path">{{ s.network_path or "—" }}</span></div>
       <div><span class="k">Host → Client</span><span id="meta-hostclient">{{ s.host or "?" }} → {{ s.client or "?" }}</span></div>
-      <div><span class="k">Codec</span>{{ s.codec or "—" }}{% if s.hdr %} · HDR{% endif %}</div>
-      <div><span class="k">Video</span>{{ s.resolution or "—" }} @ {{ s.fps or "—" }}fps · {{ s.bitrate_mbps or "—" }} Mbps</div>
+      <div><span class="k">Codec</span><span id="meta-codec">{{ s.codec or "—" }}{% if s.hdr %} · HDR{% endif %}</span></div>
+      <div><span class="k">Video</span><span id="meta-video">{{ s.resolution or "—" }} @ {{ s.fps or "—" }}fps · {{ s.bitrate_mbps or "—" }} Mbps</span></div>
       <div><span class="k">Started</span><span class="mono">{{ (s.started_at or "")[:19] }}</span></div>
       <div><span class="k">Stopped</span><span class="mono">{{ (s.stopped_at or "—")[:19] }}</span></div>
     </div>
@@ -29,6 +32,166 @@
       <button class="btn danger" onclick="ASL.deleteSession()">Delete</button>
     </div>
   </section>
+
+  {% set req = s.requested_settings or {} %}
+  {% set hd = s.hdr_details or {} %}
+  {% set va = s.visual_assessment or {} %}
+  <div class="two-col">
+    <section class="card">
+      <div class="card-head">
+        <h2>Stream identity</h2>
+        {% if s.comparison_label %}
+          <a class="btn" href="/comparisons/{{ s.comparison_label | urlencode }}">Compare test case</a>
+        {% endif %}
+      </div>
+      <div class="meta-grid evidence-grid">
+        <div><span class="k">Test case</span><span id="identity-comparison">{{ s.comparison_label or "—" }}</span></div>
+        <div><span class="k">Apollo preset</span><span id="identity-app">{{ s.apollo_app or "—" }}</span></div>
+        <div><span class="k">Game / process</span><span id="identity-game">{{ s.game_title or "—" }}</span></div>
+        <div><span class="k">Client app</span><span id="identity-role">{{ s.client_role or "—" }}</span></div>
+        <div><span class="k">Platform</span><span id="identity-platform">{{ s.client_platform or "—" }}</span></div>
+        <div><span class="k">Version</span><span id="identity-version">{{ s.client_version or "—" }}</span></div>
+      </div>
+      <table class="grid small evidence-table">
+        <thead><tr><th>Setting</th><th>Client requested</th><th>Effective / Apollo</th></tr></thead>
+        <tbody>
+          <tr><td>Codec</td><td id="req-codec">{{ req.codec or "—" }}</td><td id="eff-codec">{{ s.codec or "—" }}</td></tr>
+          <tr><td>Resolution</td><td id="req-resolution">{{ req.resolution or "—" }}</td><td id="eff-resolution">{{ s.resolution or "—" }}</td></tr>
+          <tr><td>FPS</td><td id="req-fps">{{ req.fps if req.fps is not none else "—" }}</td><td id="eff-fps">{{ s.fps if s.fps is not none else "—" }}</td></tr>
+          <tr><td>Bitrate</td><td id="req-bitrate">{{ (req.bitrate_mbps ~ " Mbps") if req.bitrate_mbps is not none else "—" }}</td><td id="eff-bitrate">{{ (s.bitrate_mbps ~ " Mbps") if s.bitrate_mbps is not none else "—" }}</td></tr>
+          <tr><td>HDR</td><td id="req-hdr">{{ "yes" if req.hdr is sameas true else ("no" if req.hdr is sameas false else "—") }}</td><td id="eff-hdr">{{ "yes" if s.hdr else "no" }}</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>HDR pipeline</h2>
+      <table class="grid small evidence-table">
+        <tbody>
+          <tr><th>Client requested HDR</th><td id="hdr-requested">{{ "yes" if hd.requested is sameas true else ("no" if hd.requested is sameas false else "—") }}</td></tr>
+          <tr><th>Host display HDR</th><td id="hdr-host-display">{{ "yes" if hd.host_display_hdr is sameas true else ("no" if hd.host_display_hdr is sameas false else "—") }}</td></tr>
+          <tr><th>Encoded HDR</th><td id="hdr-encoded">{{ "yes" if hd.encoded_hdr is sameas true else ("no" if hd.encoded_hdr is sameas false else "—") }}</td></tr>
+          <tr><th>Color / transfer / depth</th><td id="hdr-color">{{ hd.color_primaries or "—" }} / {{ hd.transfer_function or "—" }} / {{ (hd.bit_depth ~ "-bit") if hd.bit_depth else "—" }}</td></tr>
+          <tr><th>Client decoder / renderer</th><td id="hdr-client">{{ hd.client_decoder or "—" }} / {{ hd.client_renderer or "—" }}</td></tr>
+          <tr><th>Client display HDR</th><td id="hdr-client-display">{{ "yes" if hd.client_display_hdr is sameas true else ("no" if hd.client_display_hdr is sameas false else "—") }}</td></tr>
+          <tr><th>Tone mapping</th><td id="hdr-tone">{{ hd.tone_mapping or "—" }}</td></tr>
+          <tr><th>Result</th><td id="hdr-status">{{ hd.status or "unknown" }}</td></tr>
+          <tr><th>Evidence</th><td id="hdr-evidence">{{ (hd.evidence | join("; ")) if hd.evidence else "—" }}{% if hd.confidence is not none %} · {{ hd.confidence }} confidence{% endif %}</td></tr>
+        </tbody>
+      </table>
+      <p class="muted small">Log evidence shows negotiation and rendering state. Screenshots and
+        operator ratings can reveal obvious differences, but are not objective colorimetry.</p>
+    </section>
+  </div>
+
+  {% set dv = display_validation %}
+  {% set dc = dv.checks %}
+  <section class="card">
+    <div class="card-head">
+      <h2>Virtual display validation</h2>
+      <span id="display-status" class="pill display-{{ dv.status }}">{{ dv.status }}</span>
+    </div>
+    <p class="muted" id="display-empty" {% if b.display_samples %}hidden{% endif %}>No display
+      topology samples yet. A Windows host collector records them before, during, and after the
+      stream.</p>
+    <div id="display-content" {% if not b.display_samples %}hidden{% endif %}>
+      <div class="two-col display-validation-grid">
+        <table class="grid small evidence-table">
+          <tbody>
+            <tr><th>Display</th><td id="display-name">{{ dv.display_name or "unknown" }}</td></tr>
+            <tr><th>Virtual target active</th><td id="display-virtual">{{ state(dc.virtual_display_active) }}</td></tr>
+            <tr><th>Resolution</th><td id="display-resolution">{{ dv.actual.resolution or "—" }} / expected {{ dv.expected.resolution or "—" }}</td></tr>
+            <tr><th>Refresh</th><td id="display-refresh">{{ dv.actual.refresh_hz if dv.actual.refresh_hz is not none else "—" }} Hz / expected {{ dv.expected.refresh_hz if dv.expected.refresh_hz is not none else "—" }} Hz</td></tr>
+            <tr><th>Windows Advanced Color</th><td id="display-hdr">{{ state(dv.actual.hdr) }} / expected {{ state(dv.expected.hdr) }}</td></tr>
+            <tr><th>Only active display</th><td id="display-only">{{ state(dc.only_active_display) }}</td></tr>
+            <tr><th>Topology restored after</th><td id="display-restored">{{ state(dc.topology_restored_after) }}</td></tr>
+          </tbody>
+        </table>
+        <div>
+          <p class="muted small">Windows CCD evidence from QueryDisplayConfig and
+            DisplayConfigGetDeviceInfo. A partial result means the topology was observed but one
+            or more identity/mode checks were unavailable.</p>
+          <p id="display-mode-summary" class="small">
+            Resolution {{ state(dc.resolution_matches) }} · refresh {{ state(dc.refresh_matches) }}
+            · HDR {{ state(dc.hdr_matches) }}
+          </p>
+        </div>
+      </div>
+      <details class="link-detail">
+        <summary class="muted small">Display path samples (<span id="display-count">{{ b.display_samples|length }}</span>)</summary>
+        <table class="grid small">
+          <thead><tr><th>Phase/time</th><th>Display</th><th>Virtual</th><th>Primary</th>
+            <th>Mode</th><th>HDR</th><th>Adapter/source → target</th></tr></thead>
+          <tbody id="display-tbody">
+          {% for d in b.display_samples %}
+            <tr><td>{{ d.phase }} <span class="mono">{{ (d.sampled_at or "")[11:19] }}</span></td>
+              <td>{{ d.friendly_name or d.source_name or "unknown" }}</td>
+              <td>{{ state(d.is_virtual) }}</td><td>{{ state(d.primary) }}</td>
+              <td>{{ d.width or "—" }}x{{ d.height or "—" }} @ {{ d.refresh_hz if d.refresh_hz is not none else "—" }} Hz</td>
+              <td>{{ state(d.hdr_enabled) }}{% if d.bits_per_channel %} · {{ d.bits_per_channel }}-bit{% endif %}</td>
+              <td class="mono">{{ d.adapter_id or "—" }} / {{ d.source_id if d.source_id is not none else "—" }} → {{ d.target_id if d.target_id is not none else "—" }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </details>
+    </div>
+  </section>
+
+  <details class="card">
+    <summary><b>Edit stream/HDR evidence</b> <span class="muted small">manual override for incomplete logs and Android/Xbox</span></summary>
+    <form id="evidence-form" class="form evidence-form">
+      <div class="row">
+        <label>Test case <input id="ev-comparison" value="{{ s.comparison_label or '' }}"></label>
+        <label>Apollo preset <input id="ev-app" value="{{ s.apollo_app or '' }}"></label>
+        <label>Game / process <input id="ev-game" value="{{ s.game_title or '' }}"></label>
+      </div>
+      <div class="row">
+        <label>Client app <select id="ev-role"><option value="">—</option>
+          {% for r in ["moonlight","artemis"] %}<option value="{{ r }}" {% if s.client_role == r %}selected{% endif %}>{{ r }}</option>{% endfor %}
+        </select></label>
+        <label>Platform <input id="ev-platform" value="{{ s.client_platform or '' }}"></label>
+        <label>Version <input id="ev-version" value="{{ s.client_version or '' }}"></label>
+      </div>
+      <h3>Requested settings</h3>
+      <div class="row">
+        <label>Codec <input id="ev-req-codec" value="{{ req.codec or '' }}"></label>
+        <label>Resolution <input id="ev-req-resolution" value="{{ req.resolution or '' }}"></label>
+        <label>FPS <input id="ev-req-fps" type="number" value="{{ req.fps if req.fps is not none else '' }}"></label>
+        <label>Mbps <input id="ev-req-bitrate" type="number" value="{{ req.bitrate_mbps if req.bitrate_mbps is not none else '' }}"></label>
+        <label>HDR <select id="ev-req-hdr"><option value="">unknown</option><option value="true" {% if req.hdr is sameas true %}selected{% endif %}>yes</option><option value="false" {% if req.hdr is sameas false %}selected{% endif %}>no</option></select></label>
+      </div>
+      <h3>Effective settings</h3>
+      <div class="row">
+        <label>Codec <input id="ev-eff-codec" value="{{ s.codec or '' }}"></label>
+        <label>Resolution <input id="ev-eff-resolution" value="{{ s.resolution or '' }}"></label>
+        <label>FPS <input id="ev-eff-fps" type="number" value="{{ s.fps if s.fps is not none else '' }}"></label>
+        <label>Mbps <input id="ev-eff-bitrate" type="number" value="{{ s.bitrate_mbps if s.bitrate_mbps is not none else '' }}"></label>
+        <label>HDR <select id="ev-eff-hdr"><option value="false" {% if not s.hdr %}selected{% endif %}>no</option><option value="true" {% if s.hdr %}selected{% endif %}>yes</option></select></label>
+      </div>
+      <h3>HDR observations</h3>
+      <div class="row wrap">
+        <label>Host display <select id="ev-hdr-host"><option value="">unknown</option><option value="true" {% if hd.host_display_hdr is sameas true %}selected{% endif %}>HDR</option><option value="false" {% if hd.host_display_hdr is sameas false %}selected{% endif %}>SDR</option></select></label>
+        <label>Encoded <select id="ev-hdr-encoded"><option value="">unknown</option><option value="true" {% if hd.encoded_hdr is sameas true %}selected{% endif %}>HDR</option><option value="false" {% if hd.encoded_hdr is sameas false %}selected{% endif %}>SDR</option></select></label>
+        <label>Client display <select id="ev-hdr-client-display"><option value="">unknown</option><option value="true" {% if hd.client_display_hdr is sameas true %}selected{% endif %}>HDR</option><option value="false" {% if hd.client_display_hdr is sameas false %}selected{% endif %}>SDR</option></select></label>
+        <label>Primaries <input id="ev-primaries" value="{{ hd.color_primaries or '' }}"></label>
+        <label>Transfer <input id="ev-transfer" value="{{ hd.transfer_function or '' }}"></label>
+        <label>Bit depth <input id="ev-depth" type="number" value="{{ hd.bit_depth or '' }}"></label>
+        <label>Decoder <input id="ev-decoder" value="{{ hd.client_decoder or '' }}"></label>
+        <label>Renderer <input id="ev-renderer" value="{{ hd.client_renderer or '' }}"></label>
+        <label>Tone mapping <input id="ev-tone" value="{{ hd.tone_mapping or '' }}"></label>
+        <label>Status <select id="ev-hdr-status"><option value="">unknown</option>{% for st in ["working","partial","fallback","failed"] %}<option value="{{ st }}" {% if hd.status == st %}selected{% endif %}>{{ st }}</option>{% endfor %}</select></label>
+      </div>
+      <h3>Visual assessment</h3>
+      <div class="row">
+        <label>Rating (1-5) <input id="ev-rating" type="number" min="1" max="5" value="{{ va.rating or '' }}"></label>
+        <label>Brightness <input id="ev-brightness" value="{{ va.brightness or '' }}"></label>
+        <label>Black levels <input id="ev-blacks" value="{{ va.black_levels or '' }}"></label>
+        <label>Colors <input id="ev-colors" value="{{ va.colors or '' }}"></label>
+      </div>
+      <label>Visual notes <textarea id="ev-visual-notes" rows="2">{{ va.notes or "" }}</textarea></label>
+      <button class="btn primary" type="submit">Save evidence</button>
+    </form>
+  </details>
 
   <section class="card">
     <div class="card-head"><h2>Logs — host vs client</h2>
@@ -119,6 +282,8 @@
     </div>
     <form id="artifact-form" class="row">
       <input type="file" name="file" accept="image/*" required>
+      <select name="kind"><option value="overlay_screenshot">Performance overlay</option>
+        <option value="hdr_screenshot">HDR comparison screenshot</option></select>
       <input name="caption" placeholder="caption (optional)">
       <button class="btn" type="submit">Upload</button>
     </form>

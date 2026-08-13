@@ -53,14 +53,25 @@ def patch_session(hub: str, sid: str, fields: dict[str, Any]) -> None:
 
 
 def post_log(hub: str, sid: str, source: str, role: str, content: str,
-             machine: Optional[str] = None) -> None:
-    _request("POST", f"{hub}/api/sessions/{sid}/logs",
-             {"source": source, "role": role, "content": content, "machine": machine})
+             machine: Optional[str] = None, meta: Optional[dict[str, Any]] = None) -> None:
+    payload = {"source": source, "role": role, "content": content, "machine": machine}
+    if meta:
+        payload["meta"] = meta
+    _request("POST", f"{hub}/api/sessions/{sid}/logs", payload)
+
+
+def post_observations(hub: str, sid: str, payload: dict[str, Any]) -> None:
+    _request("POST", f"{hub}/api/sessions/{sid}/observations", payload)
 
 
 def post_links(hub: str, sid: str, samples: list[dict[str, Any]]) -> int:
     res = _request("POST", f"{hub}/api/sessions/{sid}/links", {"samples": samples})
     return res.get("added", 0)
+
+
+def post_displays(hub: str, sid: str, samples: list[dict[str, Any]]) -> int:
+    res = _request("POST", f"{hub}/api/sessions/{sid}/displays", {"samples": samples}) or {}
+    return res.get("added", len(samples))
 
 
 def post_nettest(hub: str, sid: str, result: dict[str, Any]) -> None:

@@ -5,8 +5,29 @@
 <form id="new-session" class="card form">
   <label>Name <input name="name" placeholder="e.g. Couch box, remote, HEVC 1440p60"></label>
   <div class="row">
+    <label>Comparison / test case
+      <input name="comparison_label" placeholder="e.g. cyberpunk-4k-hdr-local">
+    </label>
+    <label>Apollo application preset
+      <input name="apollo_app" placeholder="e.g. Desktop or Playnite">
+    </label>
+    <label>Game / process
+      <input name="game_title" placeholder="e.g. Cyberpunk 2077">
+    </label>
+  </div>
+  <div class="row">
     <label>Host <input name="host" placeholder="DOMINO"></label>
     <label>Client <input name="client" placeholder="bazzite-couch"></label>
+  </div>
+  <div class="row">
+    <label>Client app
+      <select name="client_role">
+        <option value="">—</option><option value="moonlight">Moonlight</option>
+        <option value="artemis">Artemis</option>
+      </select>
+    </label>
+    <label>Client platform <input name="client_platform" placeholder="Windows, Linux, Android, Xbox"></label>
+    <label>Client version <input name="client_version" placeholder="optional"></label>
   </div>
   <div class="row">
     <label>Network path
@@ -25,11 +46,13 @@
       </select>
     </label>
   </div>
+  <p class="muted small">These are the settings requested by the client. The host collector fills
+    the effective negotiated values separately when Apollo logs them.</p>
   <div class="row">
-    <label>Resolution <input name="resolution" placeholder="1440p"></label>
+    <label>Requested resolution <input name="resolution" placeholder="2560x1440"></label>
     <label>FPS <input name="fps" type="number" placeholder="60"></label>
     <label>Bitrate (Mbps) <input name="bitrate_mbps" type="number" placeholder="50"></label>
-    <label class="check">HDR <input name="hdr" type="checkbox"></label>
+    <label class="check">HDR requested <input name="hdr" type="checkbox"></label>
   </div>
   <label>Notes <textarea name="notes" rows="3" placeholder="What are you testing / expecting?"></textarea></label>
   <button class="btn primary" type="submit">Create session</button>

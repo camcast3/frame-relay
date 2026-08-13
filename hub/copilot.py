@@ -21,6 +21,7 @@ import subprocess
 from typing import Any
 
 from . import config
+from . import display_validation
 
 # Thresholds drawn from the Sunshine/Apollo troubleshooting guidance.
 LOSS_WARN_PCT = 5.0
@@ -99,27 +100,63 @@ def _tail(chunks: list[dict[str, Any]], lines: int) -> str:
 
 def build_context(bundle: dict[str, Any], related: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     s = bundle["session"]
+    display_samples = [
+        sample for sample in bundle.get("display_samples", [])
+        if sample.get("source") == "host"
+    ]
     return {
         "scenario": {
+            "comparison_label": s.get("comparison_label"),
+            "apollo_app": s.get("apollo_app"),
+            "game_title": s.get("game_title"),
             "network_path": s.get("network_path"),
             "host": s.get("host"),
             "client": s.get("client"),
+            "client_role": s.get("client_role"),
+            "client_platform": s.get("client_platform"),
+            "client_version": s.get("client_version"),
+            "requested_settings": s.get("requested_settings") or {},
             "codec": s.get("codec"),
             "resolution": s.get("resolution"),
             "fps": s.get("fps"),
             "bitrate_mbps": s.get("bitrate_mbps"),
             "hdr": bool(s.get("hdr")),
+            "hdr_details": s.get("hdr_details") or {},
+            "visual_assessment": s.get("visual_assessment") or {},
             "encoder_settings": s.get("encoder_settings"),
             "outcome": s.get("outcome"),
         },
         "notes": s.get("notes"),
         "net_tests": bundle.get("net_tests", []),
         "link_samples": bundle.get("link_samples", []),
+        "display_samples": display_samples,
+        "display_validation": display_validation.summarize(s, display_samples),
         "host_log_tail": _tail(bundle.get("host_logs", []), config.COPILOT_LOG_TAIL_LINES),
         "client_log_tail": _tail(bundle.get("client_logs", []), config.COPILOT_LOG_TAIL_LINES),
         "related_sessions": [
-            {"id": r["id"], "network_path": r.get("network_path"),
-             "outcome": r.get("outcome"), "notes": (r.get("notes") or "")[:200]}
+            {
+                "id": r["id"],
+                "comparison_label": r.get("comparison_label"),
+                "apollo_app": r.get("apollo_app"),
+                "game_title": r.get("game_title"),
+                "network_path": r.get("network_path"),
+                "host": r.get("host"),
+                "client": r.get("client"),
+                "client_role": r.get("client_role"),
+                "client_platform": r.get("client_platform"),
+                "requested_settings": r.get("requested_settings") or {},
+                "effective_settings": {
+                    "codec": r.get("codec"),
+                    "resolution": r.get("resolution"),
+                    "fps": r.get("fps"),
+                    "bitrate_mbps": r.get("bitrate_mbps"),
+                    "hdr": bool(r.get("hdr")),
+                },
+                "hdr_details": r.get("hdr_details") or {},
+                "visual_assessment": r.get("visual_assessment") or {},
+                "outcome": r.get("outcome"),
+                "notes": (r.get("notes") or "")[:200],
+            }
             for r in (related or [])
         ],
     }
@@ -252,6 +289,124 @@ def _client_stat_findings(client_log: str) -> list[str]:
     return findings
 
 
+def _stream_findings(scenario: dict[str, Any]) -> list[str]:
+    findings: list[str] = []
+    requested = scenario.get("requested_settings") or {}
+    effective = {
+        "codec": scenario.get("codec"),
+        "resolution": scenario.get("resolution"),
+        "fps": scenario.get("fps"),
+        "bitrate_mbps": scenario.get("bitrate_mbps"),
+        "hdr": scenario.get("hdr"),
+    }
+    for field, label in (
+        ("codec", "codec"),
+        ("resolution", "resolution"),
+        ("fps", "frame rate"),
+        ("bitrate_mbps", "bitrate"),
+    ):
+        req, got = requested.get(field), effective.get(field)
+        if req is not None and got is not None and str(req).lower() != str(got).lower():
+            findings.append(f"Client requested {label} {req}, but Apollo used {got}.")
+
+    req_hdr = requested.get("hdr")
+    hd = scenario.get("hdr_details") or {}
+    if req_hdr is True and hd.get("host_display_hdr") is False:
+        findings.append(
+            "Client requested HDR, but the Apollo host display was SDR; the stream cannot carry "
+            "the intended native HDR presentation."
+        )
+    if req_hdr is True and hd.get("encoded_hdr") is False:
+        findings.append(
+            "Client requested HDR, but Apollo encoded SDR. Check the host HDR display state, "
+            "virtual display mode, codec support, and Apollo HDR configuration."
+        )
+    if hd.get("encoded_hdr") is True and hd.get("client_display_hdr") is False:
+        findings.append(
+            "Apollo encoded HDR, but the client reports an SDR display path; expect tone mapping, "
+            "washed-out color, clipping, or an HDR fallback on this client."
+        )
+    tone = hd.get("tone_mapping")
+    if tone and str(tone).lower() not in ("off", "disabled", "none", "native"):
+        findings.append(f"Client HDR path reports tone mapping ({tone}); it is not a native HDR pass-through.")
+    status = str(hd.get("status") or "").lower()
+    if status in ("partial", "fallback", "failed"):
+        findings.append(f"Structured HDR result is {status} for this client.")
+    return findings
+
+
+def _comparison_findings(scenario: dict[str, Any], peers: list[dict[str, Any]]) -> list[str]:
+    label = scenario.get("comparison_label")
+    if not label:
+        return []
+    matched = [p for p in peers if p.get("comparison_label") == label]
+    if not matched:
+        return []
+    findings: list[str] = []
+    current_role = scenario.get("client_role") or scenario.get("client")
+    current_hd = scenario.get("hdr_details") or {}
+    current_status = current_hd.get("status")
+    current_visual = (scenario.get("visual_assessment") or {}).get("rating")
+    for peer in matched:
+        peer_name = peer.get("client_role") or peer.get("client") or peer.get("id")
+        peer_status = (peer.get("hdr_details") or {}).get("status")
+        if current_status and peer_status and current_status != peer_status:
+            findings.append(
+                f"Matched test case differs by client: {current_role} HDR result is "
+                f"{current_status}, while {peer_name} is {peer_status}."
+            )
+        peer_visual = (peer.get("visual_assessment") or {}).get("rating")
+        if current_visual is not None and peer_visual is not None and abs(current_visual - peer_visual) >= 2:
+            findings.append(
+                f"Operator HDR rating differs materially: {current_role} {current_visual}/5 "
+                f"versus {peer_name} {peer_visual}/5."
+            )
+    return findings
+
+
+def _display_findings(ctx: dict[str, Any]) -> list[str]:
+    samples = ctx.get("display_samples") or []
+    if not samples:
+        return []
+    result = ctx.get("display_validation") or {}
+    checks = result.get("checks") or {}
+    findings: list[str] = []
+    topology_observed = checks.get("topology_observed")
+    if topology_observed is False:
+        findings.append("No active Windows display topology was observed during the stream.")
+    if checks.get("virtual_display_active") is False:
+        findings.append(
+            "The active streamed display was not identified as an Apollo/Sunshine virtual "
+            "display."
+        )
+    elif topology_observed is True and checks.get("virtual_display_active") is None:
+        findings.append(
+            "Display topology was captured, but the active target could not be confidently "
+            "identified as virtual from its Windows device names."
+        )
+    if checks.get("resolution_matches") is False:
+        findings.append(
+            f"Virtual display resolution mismatch: expected "
+            f"{result.get('expected', {}).get('resolution')}, observed "
+            f"{result.get('actual', {}).get('resolution')}."
+        )
+    if checks.get("refresh_matches") is False:
+        findings.append(
+            f"Virtual display refresh mismatch: expected about "
+            f"{result.get('expected', {}).get('refresh_hz')} Hz, observed "
+            f"{result.get('actual', {}).get('refresh_hz')} Hz."
+        )
+    if checks.get("hdr_matches") is False:
+        findings.append(
+            f"Windows Advanced Color state does not match the requested HDR mode "
+            f"(expected {result.get('expected', {}).get('hdr')}, observed "
+            f"{result.get('actual', {}).get('hdr')})."
+        )
+    if checks.get("topology_restored_after") is False:
+        findings.append("The Windows display topology did not return to its pre-stream targets.")
+    return findings
+
+
 def analyze_signals(ctx: dict[str, Any]) -> dict[str, Any]:
     findings: list[str] = []
 
@@ -297,6 +452,11 @@ def analyze_signals(ctx: dict[str, Any]) -> dict[str, Any]:
     findings += _client_stat_findings(ctx.get("client_log_tail", ""))
     return {
         "network": findings,
+        "display": _display_findings(ctx),
+        "stream": _stream_findings(ctx.get("scenario", {})),
+        "comparison": _comparison_findings(
+            ctx.get("scenario", {}), ctx.get("related_sessions", [])
+        ),
         "host_log": host_findings,
         "client_log": client_findings,
     }
@@ -306,8 +466,9 @@ def analyze_signals(ctx: dict[str, Any]) -> dict[str, Any]:
 
 SYSTEM_PROMPT = (
     "You are diagnosing a game-streaming test between an Apollo/Sunshine host and a "
-    "Moonlight/Artemis client. Given the scenario, network tests, Wi-Fi/link samples, and the "
-    "tail of both host and client logs, explain concisely: (1) what happened, (2) the most "
+    "Moonlight/Artemis client. Given stream identity, requested versus effective settings, the "
+    "HDR pipeline, matched client comparisons, network tests, Wi-Fi/link samples, and both log "
+    "tails, explain concisely: (1) what happened, (2) the most "
     "likely root cause, (3) a concrete fix, and (4) the single most useful next test to run. "
     "Prefer specifics from the data. Note whether this looks like a local-LAN vs remote issue."
 )
@@ -336,6 +497,15 @@ def _mock(ctx: dict[str, Any], question: str | None) -> str:
     if net:
         lines.append("\n**Network / link:**")
         lines += [f"- {n}" for n in net]
+    if signals["display"]:
+        lines.append("\n**Virtual display:**")
+        lines += [f"- {n}" for n in signals["display"]]
+    if signals["stream"]:
+        lines.append("\n**Requested / effective stream and HDR:**")
+        lines += [f"- {n}" for n in signals["stream"]]
+    if signals["comparison"]:
+        lines.append("\n**Matched client comparison:**")
+        lines += [f"- {n}" for n in signals["comparison"]]
     if signals["host_log"]:
         lines.append("\n**Host (Apollo) log flags:**")
         lines += [f"- `{h}`" for h in signals["host_log"]]
@@ -343,7 +513,8 @@ def _mock(ctx: dict[str, Any], question: str | None) -> str:
         lines.append("\n**Client (Moonlight/Artemis) log flags:**")
         lines += [f"- `{h}`" for h in signals["client_log"]]
 
-    if not (net or signals["host_log"] or signals["client_log"]):
+    if not (net or signals["display"] or signals["stream"] or signals["comparison"]
+            or signals["host_log"] or signals["client_log"]):
         lines.append("\nNo errors, packet loss, jitter, weak-signal or roam events were "
                      "detected in the supplied data. If the experience still felt off, capture "
                      "the Apollo performance overlay stats and attach an iperf3 run.")
@@ -367,6 +538,12 @@ def _mock(ctx: dict[str, Any], question: str | None) -> str:
         lines.append("- Network path quality. Re-run iperf3, lower bitrate ~15%, and compare a wired run.")
     elif any("Weak Wi-Fi" in n for n in net):
         lines.append("- Wi-Fi signal strength. Improve placement/AP or switch to Ethernet.")
+    elif signals["display"]:
+        lines.append("- Windows virtual-display creation, mode, HDR state, or teardown. Fix the "
+                     "failed topology check above before attributing the result to the network.")
+    elif signals["stream"] or signals["comparison"]:
+        lines.append("- Stream negotiation or HDR-pipeline mismatch above. Re-run the same test "
+                     "case with matched settings and verify every HDR stage before comparing visuals.")
     elif signals["host_log"] or signals["client_log"]:
         lines.append("- Application-level errors above (codec/HDR/decoder/pairing). Address the flagged lines first.")
     else:

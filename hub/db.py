@@ -13,6 +13,20 @@ from typing import Any, Iterable, Iterator
 
 from . import config
 
+SESSION_JSON_COLUMNS = ("encoder_settings", "requested_settings", "hdr_details", "visual_assessment")
+JSON_COLUMNS = SESSION_JSON_COLUMNS + ("meta",)
+SESSION_COLUMN_MIGRATIONS = {
+    "comparison_label": "TEXT",
+    "apollo_app": "TEXT",
+    "game_title": "TEXT",
+    "client_role": "TEXT",
+    "client_platform": "TEXT",
+    "client_version": "TEXT",
+    "requested_settings": "TEXT NOT NULL DEFAULT '{}'",
+    "hdr_details": "TEXT NOT NULL DEFAULT '{}'",
+    "visual_assessment": "TEXT NOT NULL DEFAULT '{}'",
+}
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS sessions (
     id            TEXT PRIMARY KEY,
@@ -20,13 +34,22 @@ CREATE TABLE IF NOT EXISTS sessions (
     status        TEXT NOT NULL DEFAULT 'active',   -- active | stopped
     host          TEXT,
     client        TEXT,
-    network_path  TEXT,                              -- local-LAN | remote-Tailscale | remote-WAN
+    comparison_label TEXT,
+    apollo_app    TEXT,
+    game_title    TEXT,
+    client_role   TEXT,
+    client_platform TEXT,
+    client_version TEXT,
+    network_path  TEXT,                              -- local-LAN | remote-WireGuard | remote-Tailscale | remote-WAN
     codec         TEXT,                              -- H.264 | HEVC | AV1
     resolution    TEXT,
     fps           INTEGER,
     bitrate_mbps  INTEGER,
     hdr           INTEGER NOT NULL DEFAULT 0,        -- 0/1
     encoder_settings TEXT,                           -- JSON blob of Apollo encoder knobs
+    requested_settings TEXT NOT NULL DEFAULT '{}',   -- JSON blob of requested stream settings
+    hdr_details   TEXT NOT NULL DEFAULT '{}',        -- JSON blob of structured HDR evidence
+    visual_assessment TEXT NOT NULL DEFAULT '{}',    -- JSON blob of operator visual review
     outcome       TEXT NOT NULL DEFAULT 'unknown',   -- unknown | pass | fail | partial
     notes         TEXT DEFAULT '',
     diagnosis     TEXT,                              -- last stored Copilot diagnosis
@@ -65,6 +88,35 @@ CREATE TABLE IF NOT EXISTS link_samples (
     sampled_at  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_link_samples_session ON link_samples(session_id);
+
+CREATE TABLE IF NOT EXISTS display_samples (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id          TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    source              TEXT NOT NULL,       -- host | client
+    machine             TEXT,
+    phase               TEXT NOT NULL,       -- before | during | after
+    adapter_id          TEXT,
+    adapter_device_path TEXT,
+    source_id           INTEGER,
+    target_id           INTEGER,
+    source_name         TEXT,
+    friendly_name       TEXT,
+    device_path         TEXT,
+    is_virtual          INTEGER,             -- 0/1
+    "primary"           INTEGER,             -- 0/1
+    width               INTEGER,
+    height              INTEGER,
+    refresh_hz          REAL,
+    rotation            TEXT,
+    scaling             TEXT,
+    output_technology   TEXT,
+    hdr_supported       INTEGER,             -- 0/1
+    hdr_enabled         INTEGER,             -- 0/1
+    bits_per_channel    INTEGER,
+    color_encoding      TEXT,
+    sampled_at          TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_display_samples_session ON display_samples(session_id);
 
 CREATE TABLE IF NOT EXISTS net_tests (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -122,22 +174,30 @@ def db() -> Iterator[sqlite3.Connection]:
 def init_db() -> None:
     with db() as conn:
         conn.executescript(SCHEMA)
+        columns = {
+            row["name"]
+            for row in conn.execute("PRAGMA table_info(sessions)").fetchall()
+        }
+        for name, ddl in SESSION_COLUMN_MIGRATIONS.items():
+            if name not in columns:
+                conn.execute(f"ALTER TABLE sessions ADD COLUMN {name} {ddl}")
 
 
 def row_to_dict(row: sqlite3.Row | None) -> dict[str, Any] | None:
     if row is None:
         return None
     d = dict(row)
-    if "encoder_settings" in d and isinstance(d["encoder_settings"], str):
-        try:
-            d["encoder_settings"] = json.loads(d["encoder_settings"]) if d["encoder_settings"] else {}
-        except json.JSONDecodeError:
-            pass
-    if "meta" in d and isinstance(d["meta"], str) and d["meta"]:
-        try:
-            d["meta"] = json.loads(d["meta"])
-        except json.JSONDecodeError:
-            pass
+    for key in JSON_COLUMNS:
+        if key not in d:
+            continue
+        if d[key] is None or d[key] == "":
+            d[key] = {}
+            continue
+        if isinstance(d[key], str):
+            try:
+                d[key] = json.loads(d[key])
+            except json.JSONDecodeError:
+                pass
     return d
 
 

@@ -1,0 +1,9 @@
+00:00:00 - Qt Info: Artemis version: 0.3.2
+00:00:01 - Qt Debug: NvHTTP::openConnection - URL: "https://host:47984" Arguments: "width=1920&height=1080&fps=60&bitrate=45000&hdrMode=0&codec=h264"
+00:00:02 - SDL Info (0): Using decoder: D3D11VA
+00:00:02 - SDL Info (0): Chosen renderer: Vulkan
+00:00:02 - Qt Info: Dynamic range: SDR
+00:00:02 - Qt Info: Display is HDR: false
+00:00:02 - Qt Info: Color coding: SDR (Rec. 709 + Gamma 2.2 + 8-bit)
+00:00:02 - Qt Info: Tone mapping: passthrough
+00:00:03 - Qt Warning: HDR disabled by client setting

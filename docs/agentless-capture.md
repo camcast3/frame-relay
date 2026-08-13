@@ -14,6 +14,10 @@ A host collector running in `-Watch` mode picks it up automatically within secon
 Both clients land beside the host's Apollo log in the side-by-side view, and the manual link
 samples feed the RSSI/roam timeline and the Copilot analysis.
 
+Use **Edit stream/HDR evidence** on the session page to record the client app/platform/version,
+requested versus effective settings, decoder/renderer/display HDR state, tone mapping, and a
+visual rating. Use the same comparison/test-case label as a matching alternate-client run.
+
 ---
 
 ## Android (Artemis / Moonlight)
@@ -36,6 +40,8 @@ Android clients can't run the Python collector, so capture is manual.
 On the hub's session page, use **Manual entry (Android / agent-less)**:
 - **Paste a client log** → pick role `artemis` (or `moonlight`), set the device name, paste
   the exported log, and submit.
+- **Edit stream/HDR evidence** → record the HDR request, display/decoder/renderer state, any
+  tone-mapping/fallback message, and the observed result.
 - **Add a Wi-Fi / link sample** → enter what the phone shows for the current network:
   - Wi-Fi **SSID** and **BSSID** (the BSSID identifies which access point — find it in the
     Android Wi-Fi details, or an app like PingMaster / a Wi-Fi analyzer),
@@ -67,3 +73,5 @@ too. On Xbox you use the **Moonlight** app.
 ### 3. Add it to the session (hub UI → Manual entry panel)
 - **Paste a client log** → role **moonlight**, device `Xbox`, paste the overlay stats / notes.
 - **Add a Wi-Fi / link sample** → enter the Xbox's connection type and, on Wi-Fi, band/signal.
+- **Edit stream/HDR evidence** → enter requested settings, overlay-reported display/decode state,
+  the HDR result, and visual notes.

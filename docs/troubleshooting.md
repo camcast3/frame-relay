@@ -100,6 +100,20 @@ dd_config_revert_on_disconnect = enabled        # restore the physical monitor o
 topology for the duration of the session — the host log shows the recomputed topology collapsing
 to the single virtual display.
 
+The Windows host collector independently records active CCD paths with
+`QueryDisplayConfig`/`DisplayConfigGetDeviceInfo` before, during, and after each session. In the
+hub's **Virtual display validation** card, check:
+
+- the Apollo/Sunshine virtual target was active during capture,
+- its source mode and refresh match the requested/effective resolution and FPS,
+- Windows Advanced Color matches the requested HDR state,
+- **Only active display** is yes when using `ensure_only_display`, and
+- the pre-stream target set returns after disconnect.
+
+An unknown virtual identity means Windows returned a target name/path that did not contain a
+recognized Apollo/Sunshine/virtual-display marker; inspect the raw device names rather than
+treating that as a pass.
+
 > AV1 **encode** on AMD requires **RDNA3 (RX 7000) or newer**; RDNA2 and older can decode AV1 but
 > not encode it. Media servers like Plex/Jellyfin playing AV1 only prove *decode*, not encode.
 

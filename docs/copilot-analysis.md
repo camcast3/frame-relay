@@ -46,6 +46,18 @@ so this is more reliable than inferring from the host)
 
 It then prints a prioritized "likely focus" conclusion.
 
+**Structured stream and HDR evidence**
+- Client-requested codec/resolution/FPS/bitrate versus Apollo's effective values.
+- HDR requested while the host display or encoded stream remained SDR.
+- Apollo encoded HDR but the client display path reported SDR.
+- Client tone mapping/fallback and partial/failed HDR outcomes.
+- Different HDR outcomes or materially different operator ratings across sessions sharing a
+  matched comparison/test-case label.
+
+The analysis distinguishes negotiation evidence from subjective visual assessment. Screenshots
+and ratings cannot establish objective HDR color accuracy without calibrated external capture
+hardware and test patterns.
+
 ## Configuration
 Set these in `.env` (see [deploy.md](./deploy.md)); resolved in [`hub/config.py`](../hub/config.py):
 

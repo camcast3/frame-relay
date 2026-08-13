@@ -1,0 +1,16 @@
+[2026-07-23 10:00:00] Qt Info: Moonlight version: 6.1.0
+[2026-07-23 10:00:01] Qt Info: Setting stream width to 2560
+[2026-07-23 10:00:01] Qt Info: Setting stream height to 1440
+[2026-07-23 10:00:01] Qt Info: Setting frame rate to 120 FPS
+[2026-07-23 10:00:01] Qt Info: Setting bitrate to 85000 kbps
+[2026-07-23 10:00:02] Qt Debug: NvHTTP::openConnection - URL: "https://host:47984" Arguments: "width=2560&height=1440&fps=120&bitrate=85000&hdrMode=1&codec=av1"
+[2026-07-23 10:00:03] SDL Info (0): FFmpeg-based video decoder chosen
+[2026-07-23 10:00:03] SDL Info (0): Decoder renderer: D3D11
+[2026-07-23 10:00:03] Qt Info: Dynamic range: HDR
+[2026-07-23 10:00:03] Qt Info: Display HDR mode: true
+[2026-07-23 10:00:03] Qt Info: Color coding: HDR (Rec. 2020 + SMPTE 2084 PQ + 10-bit)
+[2026-07-23 10:00:03] Qt Info: Color primaries: Rec. 2020
+[2026-07-23 10:00:03] Qt Info: Transfer function: SMPTE 2084 PQ
+[2026-07-23 10:00:03] Qt Info: Bit depth: 10-bit
+[2026-07-23 10:00:03] Qt Info: Tone mapping: disabled
+[2026-07-23 10:00:04] Qt Warning: HDR fallback to SDR because display does not support it

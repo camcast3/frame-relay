@@ -1,10 +1,10 @@
-"""Ingestion endpoints the collectors push to: logs, link samples, net tests, artifacts."""
+"""Ingestion endpoints the collectors push to: logs, displays, link samples, net tests, artifacts."""
 from __future__ import annotations
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from .. import config, service
-from ..models import LinkSampleBatch, LogChunkIn, NetTestIn
+from ..models import DisplaySampleBatch, LinkSampleBatch, LogChunkIn, NetTestIn
 
 router = APIRouter(prefix="/api/sessions", tags=["ingest"])
 
@@ -24,6 +24,12 @@ def add_log(session_id: str, chunk: LogChunkIn):
 def add_links(session_id: str, batch: LinkSampleBatch):
     _require(session_id)
     return {"added": service.add_link_samples(session_id, batch.samples)}
+
+
+@router.post("/{session_id}/displays")
+def add_displays(session_id: str, batch: DisplaySampleBatch):
+    _require(session_id)
+    return {"added": service.add_display_samples(session_id, batch.samples)}
 
 
 @router.post("/{session_id}/nettests")

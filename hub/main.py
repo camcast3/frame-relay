@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import config, db, service
+from . import config, db, display_validation, service
 from .routers import analysis, ingest, sessions
 
 BASE = Path(__file__).resolve().parent
@@ -48,6 +48,22 @@ def new_session_form(request: Request):
     return templates.TemplateResponse(request, "new.html", {})
 
 
+@app.get("/comparisons/{comparison_label}", response_class=HTMLResponse)
+def comparison_detail(request: Request, comparison_label: str):
+    sessions = service.get_comparison_sessions(comparison_label)
+    if not sessions:
+        raise HTTPException(404, "comparison not found")
+    return templates.TemplateResponse(
+        request,
+        "comparison.html",
+        {
+            "label": comparison_label,
+            "sessions": sessions,
+            "compatibility": service.comparison_compatibility(sessions),
+        },
+    )
+
+
 @app.get("/sessions/{session_id}", response_class=HTMLResponse)
 def session_detail(request: Request, session_id: str):
     bundle = service.get_bundle(session_id)
@@ -55,5 +71,11 @@ def session_detail(request: Request, session_id: str):
         raise HTTPException(404, "session not found")
     return templates.TemplateResponse(
         request, "session.html",
-        {"b": bundle, "related": service.get_related_sessions(session_id)},
+        {
+            "b": bundle,
+            "related": service.get_related_sessions(session_id),
+            "display_validation": display_validation.summarize(
+                bundle["session"], bundle.get("display_samples", [])
+            ),
+        },
     )

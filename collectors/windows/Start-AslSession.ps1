@@ -59,6 +59,11 @@ param(
   [switch]$StopSession,
   # metadata used only with -Create
   [string]$Name,
+  [string]$ComparisonLabel,
+  [string]$ApolloApp,
+  [string]$GameTitle,
+  [string]$ClientPlatform,
+  [string]$ClientVersion,
   [string]$HostName,
   [string]$Client,
   [ValidateSet('local-LAN', 'remote-WireGuard', 'remote-Tailscale', 'remote-WAN')][string]$NetworkPath,
@@ -98,6 +103,11 @@ if ($Launch)      { $asl += @('--launch', $Launch) }
 if ($LaunchClient){ $asl += '--launch-client' }
 foreach ($a in $LaunchArgs) { $asl += @('--launch-arg', $a) }
 if ($Name)        { $asl += @('--name', $Name) }
+if ($ComparisonLabel) { $asl += @('--comparison-label', $ComparisonLabel) }
+if ($ApolloApp)   { $asl += @('--apollo-app', $ApolloApp) }
+if ($GameTitle)   { $asl += @('--game-title', $GameTitle) }
+if ($ClientPlatform) { $asl += @('--client-platform', $ClientPlatform) }
+if ($ClientVersion) { $asl += @('--client-version', $ClientVersion) }
 if ($HostName)    { $asl += @('--host', $HostName) }
 if ($Client)      { $asl += @('--client', $Client) }
 if ($NetworkPath) { $asl += @('--network-path', $NetworkPath) }

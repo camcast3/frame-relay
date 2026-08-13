@@ -49,6 +49,15 @@ table.grid tbody tr:hover { background: var(--panel2); }
 .meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
 @media (max-width: 700px) { .meta-grid { grid-template-columns: 1fr 1fr; } }
 .meta-grid .k { display: block; color: var(--muted); font-size: 12px; }
+.evidence-grid { margin-top: 12px; }
+.evidence-table th { color: var(--muted); }
+.evidence-table tbody tr { cursor: default; }
+.evidence-form { margin-top: 12px; }
+.compat-ok { color: var(--ok); border-left: 3px solid var(--ok); padding-left: 10px; }
+.compat-warn { color: var(--warn); border-left: 3px solid var(--warn); padding: 8px 12px; background: var(--panel); }
+.compare-scroll { overflow-x: auto; }
+.compare-table { min-width: 760px; }
+.compare-table th:first-child { position: sticky; left: 0; background: var(--panel); min-width: 180px; }
 .actions { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
 
 .logs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -101,6 +110,12 @@ svg.spark { width: 100%; max-width: 480px; height: auto; background: #0b0e12; bo
 .rssiline { fill: none; stroke: var(--accent); stroke-width: 1.5; }
 .roam { stroke: var(--err); stroke-width: 1; stroke-dasharray: 3 2; }
 .axis { fill: var(--muted); font-size: 9px; }
+
+.display-validation-grid { align-items: start; }
+.display-pass { color: var(--ok); border-color: var(--ok); }
+.display-fail { color: var(--fail); border-color: var(--fail); }
+.display-partial { color: var(--partial); border-color: var(--partial); }
+#display-tbody tr { cursor: default; }
 
 .crumb { margin-bottom: 6px; }
 .flash { position: fixed; bottom: 20px; right: 20px; background: var(--ok); color: #04121f;

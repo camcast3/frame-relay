@@ -1,0 +1,13 @@
+[2026-07-23 11:00:00.000]: Info: Applications for [couch]
+[2026-07-23 11:00:01.000]: Info: Selected application [Steam Big Picture] id [7]
+[2026-07-23 11:00:01.100]: Info: Game title: "Elden Ring"
+[2026-07-23 11:00:02.000]: Info: Client Requested codec [av1]
+[2026-07-23 11:00:02.050]: Info: Client Requested stream resolution [3840x2160]
+[2026-07-23 11:00:02.100]: Info: Requested frame rate [120fps]
+[2026-07-23 11:00:02.150]: Info: Client Requested bitrate is [85000kbps]
+[2026-07-23 11:00:02.200]: Info: Client dynamicRange: 1, Display is HDR: true
+[2026-07-23 11:00:02.250]: Info: Color coding: HDR (Rec. 2020 + SMPTE 2084 PQ + 10-bit)
+[2026-07-23 11:00:02.300]: Info: Creating encoder [av1_nvenc]
+[2026-07-23 11:00:02.350]: Info: Desktop resolution [3840x2160]
+[2026-07-23 11:00:02.400]: Info: Found AV1 encoder: av1_nvenc [hardware]
+[2026-07-23 11:00:02.450]: Info: Host Streaming bitrate is [82000kbps]

@@ -20,12 +20,20 @@ const ASL = (() => {
         name: f.get("name") || null,
         host: f.get("host") || null,
         client: f.get("client") || null,
+        comparison_label: f.get("comparison_label") || null,
+        apollo_app: f.get("apollo_app") || null,
+        game_title: f.get("game_title") || null,
+        client_role: f.get("client_role") || null,
+        client_platform: f.get("client_platform") || null,
+        client_version: f.get("client_version") || null,
         network_path: f.get("network_path") || null,
-        codec: f.get("codec") || null,
-        resolution: f.get("resolution") || null,
-        fps: f.get("fps") ? Number(f.get("fps")) : null,
-        bitrate_mbps: f.get("bitrate_mbps") ? Number(f.get("bitrate_mbps")) : null,
-        hdr: f.get("hdr") === "on",
+        requested_settings: {
+          codec: f.get("codec") || null,
+          resolution: f.get("resolution") || null,
+          fps: f.get("fps") ? Number(f.get("fps")) : null,
+          bitrate_mbps: f.get("bitrate_mbps") ? Number(f.get("bitrate_mbps")) : null,
+          hdr: f.get("hdr") === "on",
+        },
         notes: f.get("notes") || "",
       };
       const s = await api("POST", "/api/sessions", payload);
@@ -210,6 +218,7 @@ const ASL = (() => {
       appendPillCell(tr, "outcome", s.outcome);
       appendTextCell(tr, s.network_path || "—");
       appendTextCell(tr, `${s.host || "?"} → ${s.client || "?"}`);
+      appendTextCell(tr, s.comparison_label || "—");
       appendTextCell(tr, `${s.codec || "—"}${s.hdr ? " · HDR" : ""}`);
       appendTextCell(tr, (s.created_at || "").substring(0, 19), "mono");
       rows.push(tr);
@@ -351,6 +360,87 @@ const ASL = (() => {
     if (atBottom) pre.scrollTop = pre.scrollHeight;
   }
 
+  function text(id, value) {
+    const el = document.getElementById(id); if (el) el.textContent = value;
+  }
+
+  function yn(value) { return value === true ? "yes" : (value === false ? "no" : "—"); }
+
+  function renderStreamEvidence(s) {
+    const req = s.requested_settings || {}, hd = s.hdr_details || {};
+    text("identity-comparison", s.comparison_label || "—");
+    text("identity-app", s.apollo_app || "—");
+    text("identity-game", s.game_title || "—");
+    text("identity-role", s.client_role || "—");
+    text("identity-platform", s.client_platform || "—");
+    text("identity-version", s.client_version || "—");
+    text("req-codec", req.codec || "—"); text("eff-codec", s.codec || "—");
+    text("req-resolution", req.resolution || "—"); text("eff-resolution", s.resolution || "—");
+    text("req-fps", req.fps ?? "—"); text("eff-fps", s.fps ?? "—");
+    text("req-bitrate", req.bitrate_mbps == null ? "—" : `${req.bitrate_mbps} Mbps`);
+    text("eff-bitrate", s.bitrate_mbps == null ? "—" : `${s.bitrate_mbps} Mbps`);
+    text("req-hdr", yn(req.hdr)); text("eff-hdr", s.hdr ? "yes" : "no");
+    text("hdr-requested", yn(hd.requested)); text("hdr-host-display", yn(hd.host_display_hdr));
+    text("hdr-encoded", yn(hd.encoded_hdr));
+    text("hdr-color", `${hd.color_primaries || "—"} / ${hd.transfer_function || "—"} / ${hd.bit_depth ? hd.bit_depth + "-bit" : "—"}`);
+    text("hdr-client", `${hd.client_decoder || "—"} / ${hd.client_renderer || "—"}`);
+    text("hdr-client-display", yn(hd.client_display_hdr));
+    text("hdr-tone", hd.tone_mapping || "—"); text("hdr-status", hd.status || "unknown");
+    const evidence = Array.isArray(hd.evidence) ? hd.evidence.join("; ") : (hd.evidence || "—");
+    text("hdr-evidence", `${evidence}${hd.confidence != null ? " · " + hd.confidence + " confidence" : ""}`);
+    text("meta-codec", `${s.codec || "—"}${s.hdr ? " · HDR" : ""}`);
+    text("meta-video", `${s.resolution || "—"} @ ${s.fps || "—"}fps · ${s.bitrate_mbps || "—"} Mbps`);
+  }
+
+  function displayState(value) {
+    return value === true || value === 1 ? "yes" : (
+      value === false || value === 0 ? "no" : "unknown"
+    );
+  }
+
+  function renderDisplayValidation(result, samples) {
+    if (!result) return;
+    const hasSamples = (samples || []).length > 0;
+    const empty = document.getElementById("display-empty");
+    const content = document.getElementById("display-content");
+    if (empty) empty.hidden = hasSamples;
+    if (content) content.hidden = !hasSamples;
+    const checks = result.checks || {}, expected = result.expected || {}, actual = result.actual || {};
+    const status = document.getElementById("display-status");
+    if (status) {
+      status.textContent = result.status || "partial";
+      status.className = "pill display-" + (result.status || "partial");
+    }
+    text("display-name", result.display_name || "unknown");
+    text("display-virtual", displayState(checks.virtual_display_active));
+    text("display-resolution", `${actual.resolution || "—"} / expected ${expected.resolution || "—"}`);
+    text("display-refresh", `${actual.refresh_hz ?? "—"} Hz / expected ${expected.refresh_hz ?? "—"} Hz`);
+    text("display-hdr", `${displayState(actual.hdr)} / expected ${displayState(expected.hdr)}`);
+    text("display-only", displayState(checks.only_active_display));
+    text("display-restored", displayState(checks.topology_restored_after));
+    text("display-mode-summary", `Resolution ${displayState(checks.resolution_matches)} · refresh ${displayState(checks.refresh_matches)} · HDR ${displayState(checks.hdr_matches)}`);
+    text("display-count", String((samples || []).length));
+
+    const tb = document.getElementById("display-tbody"); if (!tb) return;
+    tb.innerHTML = "";
+    for (const d of samples || []) {
+      const tr = document.createElement("tr");
+      const cells = [
+        [`${d.phase || "—"} ${(d.sampled_at || "").substring(11, 19)}`, "mono"],
+        [d.friendly_name || d.source_name || "unknown", ""],
+        [displayState(d.is_virtual), ""], [displayState(d.primary), ""],
+        [`${d.width ?? "—"}x${d.height ?? "—"} @ ${d.refresh_hz ?? "—"} Hz`, ""],
+        [`${displayState(d.hdr_enabled)}${d.bits_per_channel ? " · " + d.bits_per_channel + "-bit" : ""}`, ""],
+        [`${d.adapter_id || "—"} / ${d.source_id ?? "—"} → ${d.target_id ?? "—"}`, "mono"],
+      ];
+      for (const [value, cls] of cells) {
+        const td = document.createElement("td"); td.textContent = value;
+        if (cls) td.className = cls; tr.appendChild(td);
+      }
+      tb.appendChild(tr);
+    }
+  }
+
   async function refreshOnce() {
     let b;
     try { b = await api("GET", `/api/sessions/${sid()}`); } catch (e) { return true; }
@@ -359,11 +449,13 @@ const ASL = (() => {
     renderLinkRows(b.link_samples || []);
     renderLinkSummary(b.link_samples || []);
     renderNetTests(b.net_tests || []);
+    renderDisplayValidation(b.display_validation, b.display_samples || []);
     const raw = document.getElementById("bundle-data");
     if (raw) { raw.textContent = JSON.stringify(b.link_samples || []); drawRssiChart(); }
     const s = b.session || {};
     const path = document.getElementById("meta-path"); if (path) path.textContent = s.network_path || "—";
     const hc = document.getElementById("meta-hostclient"); if (hc) hc.textContent = `${s.host || "?"} → ${s.client || "?"}`;
+    renderStreamEvidence(s);
     const pill = document.getElementById("status-pill");
     if (pill && s.status) { pill.textContent = s.status; pill.className = "pill status-" + s.status; }
     return s.status === "active";
@@ -404,9 +496,64 @@ const ASL = (() => {
     });
   }
 
+  function field(id) { return document.getElementById(id)?.value ?? ""; }
+  function nullableNumber(id) { const value = field(id); return value === "" ? null : Number(value); }
+  function nullableBool(id) { const value = field(id); return value === "" ? null : value === "true"; }
+
+  function wireEvidenceForm() {
+    const f = document.getElementById("evidence-form"); if (!f) return;
+    f.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const payload = {
+        comparison_label: field("ev-comparison") || null,
+        apollo_app: field("ev-app") || null,
+        game_title: field("ev-game") || null,
+        client_role: field("ev-role") || null,
+        client_platform: field("ev-platform") || null,
+        client_version: field("ev-version") || null,
+        codec: field("ev-eff-codec") || null,
+        resolution: field("ev-eff-resolution") || null,
+        fps: nullableNumber("ev-eff-fps"),
+        bitrate_mbps: nullableNumber("ev-eff-bitrate"),
+        hdr: nullableBool("ev-eff-hdr"),
+        requested_settings: {
+          codec: field("ev-req-codec") || null,
+          resolution: field("ev-req-resolution") || null,
+          fps: nullableNumber("ev-req-fps"),
+          bitrate_mbps: nullableNumber("ev-req-bitrate"),
+          hdr: nullableBool("ev-req-hdr"),
+        },
+        hdr_details: {
+          requested: nullableBool("ev-req-hdr"),
+          host_display_hdr: nullableBool("ev-hdr-host"),
+          encoded_hdr: nullableBool("ev-hdr-encoded"),
+          color_primaries: field("ev-primaries") || null,
+          transfer_function: field("ev-transfer") || null,
+          bit_depth: nullableNumber("ev-depth"),
+          client_decoder: field("ev-decoder") || null,
+          client_renderer: field("ev-renderer") || null,
+          client_display_hdr: nullableBool("ev-hdr-client-display"),
+          tone_mapping: field("ev-tone") || null,
+          status: field("ev-hdr-status") || null,
+          evidence: ["operator"],
+          confidence: 1.0,
+        },
+        visual_assessment: {
+          rating: nullableNumber("ev-rating"),
+          brightness: field("ev-brightness") || null,
+          black_levels: field("ev-blacks") || null,
+          colors: field("ev-colors") || null,
+          notes: field("ev-visual-notes") || null,
+        },
+      };
+      await api("PATCH", `/api/sessions/${sid()}`, payload);
+      location.reload();
+    });
+  }
+
   function initSessionPage() {
     restoreLogView(); applyLogFilter(); wireSyncScroll(); wireChat(); wireArtifactUpload();
-    wirePasteLog(); wireManualLink(); drawRssiChart(); startLiveRefresh();
+    wirePasteLog(); wireManualLink(); wireEvidenceForm(); drawRssiChart(); startLiveRefresh();
     const raw = document.getElementById("bundle-data");
     if (raw) { try { renderLinkSummary(JSON.parse(raw.textContent) || []); } catch (e) {} }
   }

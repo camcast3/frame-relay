@@ -62,17 +62,28 @@ collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source host -Watch
 # Windows Artemis: the collector wraps the app - it finds Artemis for -Role, launches it, and
 # captures its stderr live. Capture ends when you close Artemis.
 collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source client -Role artemis -Create `
-    -Name "couch LAN AV1" -LaunchClient
+    -Name "couch LAN AV1" -ComparisonLabel "game-local-hdr" -ApolloApp Playnite `
+    -GameTitle "Test game" -LaunchClient
 ```
 ```bash
 # Linux Moonlight (finds the Flatpak export or /usr/bin/moonlight)
 collectors/linux/asl-session.sh --hub-url HUB --source client --role moonlight --create \
-    --name "couch LAN AV1" --launch-client --interval 15
+    --name "couch LAN AV1" --comparison-label "game-local-hdr" --apollo-app Playnite \
+    --game-title "Test game" --launch-client --interval 15
 ```
 
 The host back-fills its log from the session's start time, so the connect/handshake lines are
 captured even though the host joined a moment later. It moves on when the session is stopped or
 when the next one starts.
+
+On a Windows host, the collector also samples the active display paths through
+`QueryDisplayConfig`/`DisplayConfigGetDeviceInfo` before, during, and after the stream. The session
+page checks that the Apollo/Sunshine virtual target appeared with the expected resolution,
+refresh rate, and Advanced Color/HDR state, then verifies that the original topology returned.
+
+Use the same comparison label, Apollo preset/game, requested settings, and network path on the
+Moonlight and Artemis runs. The hub verifies those controls before presenting the client/HDR
+results as a matched comparison.
 
 ### Alternative: host creates, clients attach
 Still supported if you'd rather drive from the host. It auto-fills codec/resolution/fps/bitrate/
