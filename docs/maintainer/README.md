@@ -12,6 +12,8 @@ Keep [../../.github/copilot-instructions.md](../../.github/copilot-instructions.
 - [collectors-and-parsers.md](./collectors-and-parsers.md) — stdlib-only collector rules, parser/discovery splits, watch/live workflows, Windows console-session constraints.
 - [copilot-backends.md](./copilot-backends.md) — `mock`/`cli`/`sdk` implementation, context parity, fallback behavior, config.
 - [security-and-operations.md](./security-and-operations.md) — LAN trust boundary, screenshot-token design, artifacts/privacy, persistence, firewall/deployment concerns.
+- [dependency-security.md](./dependency-security.md) — seven-day holdback, hash locks, image
+  digests, vulnerability gates, and update procedure.
 
 ## Editing policy
 

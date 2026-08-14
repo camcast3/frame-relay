@@ -1,6 +1,10 @@
 services:
   tailscale:
-    image: tailscale/tailscale:latest
+    # No official Tailscale image available on 2026-08-13 both satisfies the seven-day
+    # holdback and passes the critical-CVE gate. Tailnet deployment therefore fails closed
+    # at an intentionally unpullable digest. Enabling it requires a reviewed source-control
+    # change to an official version@digest; deployment environment variables cannot bypass it.
+    image: tailscale/tailscale:security-review-required@sha256:0000000000000000000000000000000000000000000000000000000000000000
     hostname: apollo-streaming-lab
     restart: unless-stopped
     cap_add:

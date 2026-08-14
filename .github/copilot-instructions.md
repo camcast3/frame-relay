@@ -16,7 +16,7 @@ Python 3.11. Windows-first repo. The hub deploys on Linux Docker.
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install --require-hashes -r requirements-dev.txt
 
 .\.venv\Scripts\python.exe -m uvicorn hub.main:app --reload --port 8080
 .\.venv\Scripts\python.exe -m hub
@@ -24,7 +24,6 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe -m pytest tests/test_linkinfo.py::test_parse_netsh_wlan
 
-docker compose up -d --build
 docker compose -f docker-compose.lan.yaml up -d --build
 ```
 
@@ -48,6 +47,11 @@ Bare `uvicorn hub.main:app` binds `127.0.0.1` only. Use `python -m hub` (or pass
 - No linter/formatter is configured; do not add one unless asked.
 - Every module starts with `from __future__ import annotations`.
 - `data/` and `.env` are gitignored; never commit either.
+- Dependency updates use exact hash locks and a seven-day release holdback. Regenerate through
+  `tools/lock_requirements.py`, verify with `tools/lock_requirements.py --check`, and never
+  hand-edit lock versions/hashes. Runtime images must be
+  version+digest pinned and pass the critical/high container scan. Tailnet Compose must remain
+  fail-closed when no reviewed Tailscale image satisfies that policy.
 
 ## Tests
 

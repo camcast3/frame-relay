@@ -7,7 +7,7 @@ running hub, see [host-client-setup.md](./host-client-setup.md).
 | Option | Command | Reachable at | When to use |
 |--------|---------|--------------|-------------|
 | **LAN / WireGuard** (recommended) | `docker compose -f docker-compose.lan.yaml up -d --build` | `http://<watchtower-ip>:8080` | Devices are on your LAN or reach it over your UniFi **WireGuard** tunnel. |
-| **Tailnet-only** | `docker compose up -d --build` | `https://apollo-streaming-lab.<tailnet>.ts.net` | You'd rather not expose a LAN port; collectors reach the hub over Tailscale. |
+| **Tailnet-only** | Requires a maintainer-reviewed tracked image update, then `docker compose up -d --build` | `https://apollo-streaming-lab.<tailnet>.ts.net` | Only when an aged, scan-clean Tailscale image is available. |
 | **Direct on the host** (no Docker) | `python -m hub` | `http://<host-ip>:8080` | Run it on the Windows/Linux machine you already use — no Docker. Bind to all interfaces + open the firewall to reach it from other devices. |
 
 The Docker options read Copilot settings from `.env` (copy `.env.example` first) and persist data
@@ -38,22 +38,35 @@ remote clients can reach it. `TS_AUTHKEY` is **not** needed for this option.
 The hub runs with `network_mode: service:tailscale` and is published to the tailnet by
 `tailscale serve` on `:443` — it has **no LAN ports**. Nothing bridges the gaming VLAN ↔ DMZ.
 
+This option intentionally has no default image. As of 2026-08-13, every official Tailscale image
+available under the seven-day holdback had at least one known critical vulnerability, including
+the current `latest`. The Compose file therefore fails closed instead of silently starting a
+known-vulnerable privileged sidecar. Use LAN/WireGuard until a reviewed image passes:
+
+```powershell
+docker scout cves --only-severity critical,high --exit-code `
+  tailscale/tailscale:<version>@sha256:<digest>
+```
+
 1. Copy `.env.example` to `.env`.
-2. Set `TS_AUTHKEY` from the Tailscale admin console; prefer an auth key tagged `tag:apollo-hub`.
-3. Optionally set `ASL_COPILOT_TOKEN` and `ASL_COPILOT_BACKEND=cli` or `sdk`
+2. Have a maintainer replace the intentionally invalid image in `docker-compose.yaml` with an
+   official version+digest that is at least seven days old and passes the scan above, then commit
+   that reviewable change.
+3. Set `TS_AUTHKEY` from the Tailscale admin console; prefer an auth key tagged `tag:apollo-hub`.
+4. Optionally set `ASL_COPILOT_TOKEN` and `ASL_COPILOT_BACKEND=cli` or `sdk`
    (see [copilot-analysis.md](./copilot-analysis.md)).
-4. Apply [`../../deploy/tailscale-acl.snippet.hujson`](../../deploy/tailscale-acl.snippet.hujson) in the
+5. Apply [`../../deploy/tailscale-acl.snippet.hujson`](../../deploy/tailscale-acl.snippet.hujson) in the
    Tailscale admin console (defines `tag:apollo-hub` / `tag:apollo-collector` and who may reach
    the hub on `tcp:443`).
-5. Start on the watchtower Docker host:
+6. Start on the watchtower Docker host:
 
    ```powershell
    docker compose up -d --build
    docker compose ps
    ```
 
-6. Open `https://apollo-streaming-lab.<tailnet>.ts.net` from a tailnet device.
-7. Confirm the hub is **not** reachable at `http://<LAN-IP>:8080` — this compose file publishes
+7. Open `https://apollo-streaming-lab.<tailnet>.ts.net` from a tailnet device.
+8. Confirm the hub is **not** reachable at `http://<LAN-IP>:8080` — this compose file publishes
    no LAN ports.
 
 The proxy mapping (`:443` → `127.0.0.1:8080`, funnel disabled) lives in
@@ -69,7 +82,7 @@ interfaces and is reachable from other devices right away:
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install --require-hashes -r requirements.txt
 .\.venv\Scripts\python.exe -m hub          # serves http://<host-ip>:8080 on all interfaces
 ```
 

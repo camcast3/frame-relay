@@ -4,7 +4,7 @@
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install --require-hashes -r requirements-dev.txt
 ```
 
 Python 3.11 is the project baseline. Use Windows-style commands/examples unless a file is explicitly Linux-only.
@@ -62,14 +62,14 @@ There is no configured formatter or lint command in this repo. Some files carry 
 Use the compose file that matches the surface you are touching:
 
 ```powershell
-# tailnet-only sidecar deployment
-docker compose up -d --build
-docker compose ps
-
 # LAN / WireGuard deployment
 docker compose -f docker-compose.lan.yaml up -d --build
 docker compose -f docker-compose.lan.yaml ps
 ```
+
+Tailnet Compose contains an intentionally unpullable digest sentinel. See
+[dependency-security.md](./dependency-security.md); do not bypass the fail-closed source-control
+gate.
 
 Useful quick checks:
 

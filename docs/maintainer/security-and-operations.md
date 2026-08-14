@@ -66,5 +66,7 @@ That limitation is deliberate and should stay visible in docs and UI wording.
 - The hub and the stream are separate surfaces. Opening hub access does not open Apollo ports, and vice versa.
 - LAN/WireGuard hub deployment needs inbound access to `:8080`; Apollo itself needs its own TCP/UDP ports reachable from clients.
 - Tailnet-only deployment intentionally publishes no LAN port and relies on `tailscale serve`.
+  It is fail-closed at an intentionally invalid tracked digest until a reviewed version+digest
+  passes the dependency policy and is committed. Do not substitute `latest` or an env override.
 
 Use [../user/deploy.md](../user/deploy.md) for deployment commands and [../user/host-client-setup.md](../user/host-client-setup.md) for host/client reachability details.
