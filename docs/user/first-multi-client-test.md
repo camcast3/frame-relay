@@ -64,12 +64,13 @@ curl.exe http://127.0.0.1:8080/health
 Find its LAN address:
 
 ```powershell
-Get-NetIPConfiguration |
+(Get-NetIPConfiguration |
   Where-Object IPv4DefaultGateway |
-  Select-Object -ExpandProperty IPv4Address
+  Select-Object -First 1).IPv4Address.IPAddress
 ```
 
-The examples below use:
+This must print a plain address such as `192.168.69.159`, not an object/table. The examples below
+use:
 
 ```text
 HUB=http://192.168.69.159:8080
