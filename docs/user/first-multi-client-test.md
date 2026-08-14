@@ -129,8 +129,7 @@ hub-side setting lives in `.env` (see [Deploying the hub](./deploy.md)).
 
 ## 5. Run each Windows client
 
-Run the following command on the client being tested. Change only `Name` and `ClientPlatform`
-between the hardware runs:
+For normal capture, let Apollo and Moonlight report the stream details. The recommended command is:
 
 ```powershell
 .\collectors\windows\Start-AslSession.ps1 `
@@ -138,8 +137,40 @@ between the hardware runs:
   -Source client `
   -Role moonlight `
   -Create `
-  -Name "FF7R - ROG Ally - 1080p60 SDR" `
+  -Name "FF7R - ROG Ally" `
   -ComparisonLabel "ff7r-1080p60-sdr-lan-v1" `
+  -LaunchClient `
+  -StopSession
+```
+
+Only the hub URL, capture side/role, and create/attach choice are fundamental. In this comparison:
+
+- `ComparisonLabel` is required to group the device runs; logs cannot infer your experiment name.
+- `Name` is optional but makes the session list readable.
+- `LaunchClient` is strongly recommended on Windows because it captures Moonlight/Artemis stderr
+  live instead of relying on a buffered log.
+- `StopSession` is a convenience that closes the session after the launched client exits.
+
+The collectors fill blank fields from evidence:
+
+| Field | Evidence source |
+|---|---|
+| Requested codec/resolution/FPS/bitrate/HDR | Moonlight/Artemis request log and Apollo handshake |
+| Effective codec/resolution/FPS/bitrate/HDR | Apollo encoder/display log |
+| Apollo application preset and game/process | Apollo selected-application/process lines, when emitted |
+| Client platform/version | Collector OS and Moonlight/Artemis log |
+| Network path | Live client IP observed by the Apollo host |
+| Decoder/renderer/HDR display state | Moonlight/Artemis client log |
+
+Steam and Playnite logs are not read directly today. They are less authoritative for the stream
+contract and can report the launcher rather than the process Apollo captured. Apollo's own log is
+used first; if that Apollo version does not emit the preset/game identity, enter it in the session
+page or use the optional overrides below.
+
+Use explicit values only when logs do not expose them or when you intentionally want to record a
+known requested configuration before connection:
+
+```powershell
   -ApolloApp "Playnite" `
   -GameTitle "FINAL FANTASY VII REMAKE INTERGRADE" `
   -ClientPlatform "ROG Ally / Windows" `
@@ -147,18 +178,19 @@ between the hardware runs:
   -Codec HEVC `
   -Resolution 1920x1080 `
   -Fps 60 `
-  -BitrateMbps 30 `
-  -LaunchClient `
-  -StopSession
+  -BitrateMbps 30
 ```
 
-Use these device-specific values for the remaining runs:
+Explicit CLI/UI values win over automatic observations and are not overwritten. Do not supply
+guesses.
 
-| Device | Name | ClientPlatform |
-|---|---|---|
-| ROG Ally | `FF7R - ROG Ally - 1080p60 SDR` | `ROG Ally / Windows` |
-| Legion laptop | `FF7R - Legion Laptop - 1080p60 SDR` | `Legion Laptop / Windows` |
-| MiniPC | `FF7R - MiniPC - 1080p60 SDR` | `MiniPC / Windows` |
+Change only `Name` between the hardware runs:
+
+| Device | Name |
+|---|---|
+| ROG Ally | `FF7R - ROG Ally` |
+| Legion laptop | `FF7R - Legion Laptop` |
+| MiniPC | `FF7R - MiniPC` |
 
 The collector creates the session and opens Moonlight. Wait 5-10 seconds at Moonlight's main
 screen before starting the stream so the host watcher has time to attach. When the repeatable
@@ -172,13 +204,8 @@ If the MiniPC runs Linux, use the equivalent command:
 collectors/linux/asl-session.sh \
   --hub-url http://192.168.69.159:8080 \
   --source client --role moonlight --create \
-  --name "FF7R - MiniPC - 1080p60 SDR" \
+  --name "FF7R - MiniPC" \
   --comparison-label "ff7r-1080p60-sdr-lan-v1" \
-  --apollo-app "Playnite" \
-  --game-title "FINAL FANTASY VII REMAKE INTERGRADE" \
-  --client-platform "MiniPC / Linux" \
-  --network-path local-LAN \
-  --codec HEVC --resolution 1920x1080 --fps 60 --bitrate-mbps 30 \
   --launch-client --stop-session
 ```
 
