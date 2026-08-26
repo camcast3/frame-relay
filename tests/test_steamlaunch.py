@@ -42,9 +42,9 @@ def test_parse_profile_accepts_complete_profile():
             "hub_url": "http://hub:8080/",
             "client_role": "Moonlight",
             "name_template": "{hostname} {client_role} {timestamp}",
-            "comparison_label": "ff7r-4k120",
+            "comparison_label": "example-game-4k120",
             "apollo_app": "Playnite",
-            "game_title": "FF7R",
+            "game_title": "Example Game",
             "network_path": "local-LAN",
             "client_platform": "Bazzite",
             "requested_settings": {

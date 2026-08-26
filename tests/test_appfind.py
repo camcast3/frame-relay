@@ -6,20 +6,20 @@ from asl_collector import appfind
 WIN_ENV = {
     "ProgramFiles": r"C:\Program Files",
     "ProgramFiles(x86)": r"C:\Program Files (x86)",
-    "LOCALAPPDATA": r"C:\Users\carlt\AppData\Local",
+    "LOCALAPPDATA": r"C:\Users\tester\AppData\Local",
 }
 
 
 def test_windows_artemis_candidates():
-    got = appfind.candidate_apps("artemis", system="Windows", env=WIN_ENV, home=r"C:\Users\carlt")
-    # the real install location seen on a Legion handheld must be first
+    got = appfind.candidate_apps("artemis", system="Windows", env=WIN_ENV, home=r"C:\Users\tester")
+    # the normal system-wide install location must be first
     assert got[0] == r"C:\Program Files\Artemis Game Streaming\Artemis.exe"
     assert r"C:\Program Files (x86)\Artemis Game Streaming\Artemis.exe" in got
     assert all(p.endswith("Artemis.exe") for p in got)
 
 
 def test_windows_moonlight_candidates():
-    got = appfind.candidate_apps("moonlight", system="Windows", env=WIN_ENV, home=r"C:\Users\carlt")
+    got = appfind.candidate_apps("moonlight", system="Windows", env=WIN_ENV, home=r"C:\Users\tester")
     assert got[0] == r"C:\Program Files\Moonlight Game Streaming\Moonlight.exe"
     assert all(p.endswith("Moonlight.exe") for p in got)
 
@@ -31,8 +31,8 @@ def test_windows_roles_do_not_cross_over():
 
 
 def test_linux_prefers_flatpak_export():
-    got = appfind.candidate_apps("moonlight", system="Linux", env={}, home="/home/carlt")
-    assert got[0] == ("/home/carlt/.local/share/flatpak/exports/bin/"
+    got = appfind.candidate_apps("moonlight", system="Linux", env={}, home="/home/tester")
+    assert got[0] == ("/home/tester/.local/share/flatpak/exports/bin/"
                       "com.moonlight_stream.Moonlight")
     assert "/usr/bin/moonlight" in got
 

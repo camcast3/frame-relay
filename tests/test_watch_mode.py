@@ -6,7 +6,7 @@ from asl_collector import client, session
 
 
 def _args(**kw):
-    ns = argparse.Namespace(hub_url="http://hub", source="host", role=None, machine="DOMINO",
+    ns = argparse.Namespace(hub_url="http://hub", source="host", role=None, machine="STREAM-HOST",
                             session_id=None, create=False, attach_latest=False, watch=False,
                             watch_interval=0.01, wg_subnet=[])
     for k, v in kw.items():

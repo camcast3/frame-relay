@@ -13,7 +13,7 @@ Typical use on a machine under test (run with the system Python; stdlib only):
         --log ~/.config/Moonlight*/Moonlight.log --interval 15 --duration 0
 
     # Artemis client (Windows); LIVE logs by launching the app and capturing its stderr
-    python -m asl_collector --hub-url http://192.168.69.159:8080 --attach-latest \
+    python -m asl_collector --hub-url http://192.0.2.10:8080 --attach-latest \
         --source client --role artemis \
         --launch "C:\\Program Files\\Artemis Game Streaming\\Artemis.exe"
 """
@@ -162,7 +162,7 @@ def _enrich_host(hub: str, sid: str, log_text: str, client_ip: Optional[str],
         print(f"auto-filled: {patch}")
 
 
-DEFAULT_WG_SUBNETS = ["192.168.2.0/24"]  # user's WireGuard VLAN (override with --wg-subnet)
+DEFAULT_WG_SUBNETS: list[str] = []
 
 # How many times to retry one session in --watch mode before ignoring it. A session that
 # cannot be captured stays on the awaiting-host list, so an unguarded retry loop would spin
@@ -819,7 +819,7 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Apollo base port for client detection (default 47989)")
     p.add_argument("--wg-subnet", action="append", default=[], dest="wg_subnet",
                    help="WireGuard client subnet (repeatable); a client in it is classified "
-                        "remote-WireGuard instead of local-LAN (default: 192.168.2.0/24)")
+                        "remote-WireGuard instead of local-LAN")
     # session metadata / observations
     p.add_argument("--name")
     p.add_argument("--host")

@@ -7,7 +7,7 @@ There is 1 interface on the system:
     Physical address       : 12:34:56:78:9a:bc
     Interface type         : Primary
     State                  : connected
-    SSID                   : NegativeZone
+    SSID                   : ExampleWiFi
     BSSID                  : aa:bb:cc:11:22:33
     Network type           : Infrastructure
     Radio type             : 802.11ax
@@ -19,6 +19,6 @@ There is 1 interface on the system:
     Receive rate (Mbps)    : 1201
     Transmit rate (Mbps)   : 1201
     Signal                 : 90%
-    Profile                : NegativeZone
+    Profile                : ExampleWiFi
 
     Hosted network status  : Not available

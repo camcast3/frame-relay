@@ -6,7 +6,7 @@
 .EXAMPLE
   # HOST, recommended: leave this running. It waits for whichever session the client creates,
   # captures into it, then waits for the next one. Safe to restart; no session id needed.
-  .\Start-AslSession.ps1 -HubUrl http://192.168.69.159:8080 -Source host -Watch
+  .\Start-AslSession.ps1 -HubUrl http://192.0.2.10:8080 -Source host -Watch
 
 .EXAMPLE
   # Apollo host, attach to one existing session, sample the link every 15s until you press Enter
@@ -18,24 +18,24 @@
   $log = (Get-ChildItem "$env:TEMP\Artemis-*.log" |
           Sort-Object LastWriteTime -Desc | Select-Object -First 1).FullName
   .\Start-AslSession.ps1 -HubUrl https://apollo-streaming-lab.<tailnet>.ts.net -Create `
-      -Name "Windows Artemis LAN" -Host DOMINO -Client laptop -NetworkPath local-LAN `
+      -Name "Windows Artemis LAN" -Host STREAM-HOST -Client laptop -NetworkPath local-LAN `
       -Source client -Role artemis -LogPath $log
 
 .EXAMPLE
   # Windows Moonlight/Artemis client, zero copy-paste: attach to the newest session the host
   # created (no -SessionId), auto-detect the newest Artemis log.
-  .\Start-AslSession.ps1 -HubUrl http://192.168.69.159:8080 -Source client -Role artemis -AttachLatest
+  .\Start-AslSession.ps1 -HubUrl http://192.0.2.10:8080 -Source client -Role artemis -AttachLatest
 
 .EXAMPLE
   # LIVE client logs, no paths to type: the collector wraps Artemis - it finds the app for -Role,
   # launches it, and captures its stderr in real time (the %TEMP% log is buffered and only
   # flushes in bursts). Capture ends when you close Artemis.
-  .\Start-AslSession.ps1 -HubUrl http://192.168.69.159:8080 -Source client -Role artemis `
+  .\Start-AslSession.ps1 -HubUrl http://192.0.2.10:8080 -Source client -Role artemis `
       -Create -Name "couch LAN AV1" -LaunchClient
 
 .EXAMPLE
   # Same, but point at a specific executable (non-standard install location)
-  .\Start-AslSession.ps1 -HubUrl http://192.168.69.159:8080 -Source client -Role artemis `
+  .\Start-AslSession.ps1 -HubUrl http://192.0.2.10:8080 -Source client -Role artemis `
       -AttachLatest -Launch "$env:ProgramFiles\Artemis Game Streaming\Artemis.exe"
 #>
 [CmdletBinding()]

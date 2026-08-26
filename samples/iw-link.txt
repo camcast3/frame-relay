@@ -1,5 +1,5 @@
 Connected to aa:bb:cc:11:22:44 (on wlan0)
-	SSID: NegativeZone
+	SSID: ExampleWiFi
 	freq: 5745
 	RX: 123456 bytes (100 packets)
 	TX: 65432 bytes (80 packets)

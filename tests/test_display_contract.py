@@ -7,7 +7,7 @@ from hub.models import DisplaySampleIn, SessionCreate
 
 
 def _create(client, **kw):
-    payload = {"name": "display-test", "host": "DOMINO", "client": "couch"}
+    payload = {"name": "display-test", "host": "STREAM-HOST", "client": "couch"}
     payload.update(kw)
     r = client.post("/api/sessions", json=payload)
     assert r.status_code == 200, r.text
@@ -25,7 +25,7 @@ def test_display_samples_ingest_orders_and_surfaces_in_bundle(client):
                 {
                     "phase": "during",
                     "source": "host",
-                    "machine": "DOMINO",
+                    "machine": "STREAM-HOST",
                     "adapter_id": "GPU-0",
                     "adapter_device_path": r"\\?\DISPLAY#GPU0",
                     "source_id": 1,
@@ -86,7 +86,7 @@ def test_display_samples_ingest_orders_and_surfaces_in_bundle(client):
     during = displays[1]
     assert during["session_id"] == sid
     assert during["source"] == "host"
-    assert during["machine"] == "DOMINO"
+    assert during["machine"] == "STREAM-HOST"
     assert during["phase"] == "during"
     assert during["adapter_id"] == "GPU-0"
     assert during["adapter_device_path"] == r"\\?\DISPLAY#GPU0"
@@ -127,7 +127,7 @@ def test_display_samples_reject_client_source(client):
 
 def test_display_samples_service_defaults_sampled_at_and_cascade_delete():
     session = service.create_session(
-        SessionCreate(name="display-service", host="DOMINO", client="couch")
+        SessionCreate(name="display-service", host="STREAM-HOST", client="couch")
     )
     sid = session["id"]
 

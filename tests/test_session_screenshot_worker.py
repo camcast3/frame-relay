@@ -94,7 +94,7 @@ def test_start_screenshot_worker_skips_when_token_missing():
         "http://hub",
         "sid",
         "host",
-        "DOMINO",
+        "STREAM-HOST",
         "",
         3.0,
         _LoopEvent([True]),
@@ -118,7 +118,7 @@ def test_start_screenshot_worker_normalizes_token_whitespace(monkeypatch):
         "http://hub",
         "sid",
         "host",
-        "DOMINO",
+        "STREAM-HOST",
         " token with spaces ",
         3.0,
         _LoopEvent([True]),
@@ -169,7 +169,7 @@ def test_screenshot_worker_processes_each_request_once_and_cleans_up(tmp_path, m
         "http://hub",
         "session-1",
         "host",
-        "DOMINO",
+        "STREAM-HOST",
         "secret-token",
         0.25,
         stop_evt,
@@ -183,7 +183,7 @@ def test_screenshot_worker_processes_each_request_once_and_cleans_up(tmp_path, m
     assert calls["complete"][0][2] == 7
     assert calls["complete"][0][3] == "host"
     assert calls["complete"][0][5]["token"] == "secret-token"
-    assert calls["complete"][0][5]["machine"] == "DOMINO"
+    assert calls["complete"][0][5]["machine"] == "STREAM-HOST"
     assert not capture_path.exists()
     assert stop_evt.timeouts == [0.25, 0.25]
 
@@ -258,7 +258,7 @@ def test_screenshot_worker_retries_when_no_terminal_state_was_accepted(monkeypat
         "http://hub",
         "session-retry",
         "host",
-        "DOMINO",
+        "STREAM-HOST",
         "secret-token",
         0.25,
         _LoopEvent([False, True]),

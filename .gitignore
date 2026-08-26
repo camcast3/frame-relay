@@ -6,6 +6,11 @@ venv/
 *.egg-info/
 .pytest_cache/
 .mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+build/
+dist/
 
 # Local data / secrets
 data/
@@ -18,3 +23,5 @@ artifacts/
 # Editor
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db

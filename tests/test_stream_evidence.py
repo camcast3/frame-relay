@@ -8,7 +8,7 @@ from conftest import SAMPLES
 
 
 def _create(client, **kw):
-    payload = {"name": "comparison", "host": "DOMINO", "client": "couch"}
+    payload = {"name": "comparison", "host": "STREAM-HOST", "client": "couch"}
     payload.update(kw)
     r = client.post("/api/sessions", json=payload)
     assert r.status_code == 200, r.text

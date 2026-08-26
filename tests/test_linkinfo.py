@@ -6,7 +6,7 @@ from conftest import SAMPLES
 def test_parse_netsh_wlan():
     d = linkinfo.parse_netsh_wlan((SAMPLES / "netsh-wlan.txt").read_text())
     assert d["link_type"] == "wifi"
-    assert d["ssid"] == "NegativeZone"
+    assert d["ssid"] == "ExampleWiFi"
     assert d["bssid"] == "aa:bb:cc:11:22:33"
     assert d["phy_mode"] == "802.11ax"
     assert d["band"] == "5 GHz"
@@ -24,7 +24,7 @@ def test_parse_netsh_wlan_without_bssid():
     text = (SAMPLES / "netsh-wlan-no-bssid.txt").read_text()
     d = linkinfo.parse_netsh_wlan(text)
     assert d["link_type"] == "wifi"
-    assert d["ssid"] == "BananaStandMoney"
+    assert d["ssid"] == "ExampleWiFi"
     assert d["bssid"] is None
     assert d["band"] == "5 GHz"
     assert d["channel"] == "100"
@@ -42,7 +42,7 @@ def test_parse_iw_link():
     d = linkinfo.parse_iw_link((SAMPLES / "iw-link.txt").read_text())
     assert d["bssid"] == "aa:bb:cc:11:22:44"
     assert d["iface"] == "wlan0"
-    assert d["ssid"] == "NegativeZone"
+    assert d["ssid"] == "ExampleWiFi"
     assert d["band"] == "5GHz"
     assert d["channel"] == "149"     # (5745-5000)//5
     assert d["rssi"] == -58
@@ -51,7 +51,7 @@ def test_parse_iw_link():
 
 def test_parse_nmcli_wifi_unescapes_bssid():
     d = linkinfo.parse_nmcli_wifi((SAMPLES / "nmcli-wifi.txt").read_text())
-    assert d["ssid"] == "NegativeZone"
+    assert d["ssid"] == "ExampleWiFi"
     assert d["bssid"] == "aa:bb:cc:11:22:44"   # \: unescaped
     assert d["channel"] == "149"
     assert d["band"] == "5GHz"
