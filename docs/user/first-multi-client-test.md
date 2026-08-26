@@ -122,6 +122,10 @@ git pull
 Configure Moonlight to request the exact codec, resolution, FPS, bitrate, HDR, and audio settings
 defined in the test table.
 
+If this client is normally launched from Steam Game Mode or Big Picture, install the
+[Steam launcher](./steam-game-mode.md) instead of typing the per-run collector command. Setup asks
+whether the shortcut is Moonlight or Artemis and uses the same artwork for both.
+
 If you want authenticated host/client screenshots from the active session page, generate one shared
 `ASL_SCREENSHOT_TOKEN` and set it on the hub, the Apollo host, and every collector-capable client
 before starting their collectors. Use the same value everywhere; mismatches are rejected. The
@@ -208,6 +212,10 @@ collectors/linux/asl-session.sh \
   --comparison-label "ff7r-1080p60-sdr-lan-v1" \
   --launch-client --stop-session
 ```
+
+For repeated MiniPC tests from Steam Game Mode, wrap its existing Moonlight/Artemis shortcut using
+[Steam Game Mode / Big Picture launcher](./steam-game-mode.md). The wrapper creates and stops the
+session automatically each time the Steam tile is opened and closed.
 
 ## 6. Run an Xbox session
 

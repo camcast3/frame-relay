@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <title>Apollo Streaming Lab streaming-client artwork master</title>
+  <desc>Editable, role-neutral game-streaming lab artwork with an orbital display emblem.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07121f"/>
+      <stop offset="1" stop-color="#14224b"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0c1c31"/>
+      <stop offset="1" stop-color="#152c57"/>
+    </linearGradient>
+    <linearGradient id="signal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#59f2ff"/>
+      <stop offset="1" stop-color="#a78bff"/>
+    </linearGradient>
+    <radialGradient id="cyanGlow">
+      <stop offset="0" stop-color="#00d8ff" stop-opacity=".32"/>
+      <stop offset="1" stop-color="#00d8ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="violetGlow">
+      <stop offset="0" stop-color="#765bff" stop-opacity=".26"/>
+      <stop offset="1" stop-color="#765bff" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M64 0H0V64" fill="none" stroke="#73e7ff" stroke-opacity=".10"/>
+    </pattern>
+  </defs>
+
+  <g id="background-layer">
+    <rect width="1920" height="1080" fill="url(#background)"/>
+    <circle cx="430" cy="540" r="620" fill="url(#cyanGlow)"/>
+    <circle cx="1500" cy="250" r="600" fill="url(#violetGlow)"/>
+    <rect width="1920" height="1080" fill="url(#grid)"/>
+    <path d="M650 0h450l650 1080h-420z" fill="#9a7bff" opacity=".07"/>
+    <path d="M0 1058h710m65 0h115m40 0h990" fill="none" stroke="url(#signal)" stroke-width="6" opacity=".65"/>
+  </g>
+
+  <g id="orbital-display-emblem" transform="translate(500 500)">
+    <circle r="390" fill="url(#cyanGlow)"/>
+    <ellipse rx="360" ry="145" fill="none" stroke="#57e8ff" stroke-width="10" transform="rotate(-19)"/>
+    <ellipse rx="335" ry="130" fill="none" stroke="#9c86ff" stroke-width="10" opacity=".88" transform="rotate(31)"/>
+    <rect x="-170" y="-134" width="340" height="268" rx="40" fill="url(#screen)" stroke="#c8f8ff" stroke-width="8"/>
+    <path d="M-52-66 68 0-52 66z" fill="url(#signal)"/>
+    <g fill="#d6fbff">
+      <circle cx="-318" cy="-72" r="22"/>
+      <circle cx="282" cy="-114" r="18"/>
+      <circle cx="245" cy="126" r="15"/>
+    </g>
+  </g>
+
+  <g id="wordmark" transform="translate(930 365)">
+    <text fill="#f4fcff" font-family="Segoe UI, sans-serif" font-size="150" font-weight="700" letter-spacing="3">APOLLO</text>
+    <text y="105" fill="#65eaff" font-family="Segoe UI, sans-serif" font-size="57" font-weight="600" letter-spacing="8">STREAMING LAB</text>
+    <text y="168" fill="#a9c5dd" font-family="Segoe UI, sans-serif" font-size="25" font-weight="700" letter-spacing="4">SIGNAL   •   FRAME   •   LATENCY</text>
+  </g>
+</svg>

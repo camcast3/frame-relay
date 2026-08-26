@@ -171,6 +171,10 @@ WATCH_MAX_FAILURES = 3
 DEFAULT_SCREENSHOT_POLL_INTERVAL = 3.0
 
 
+class LaunchError(RuntimeError):
+    """The collector could not start the wrapped client application."""
+
+
 def _describe(s: dict) -> str:
     name = s.get("name") or "(unnamed)"
     host = s.get("host") or "?"
@@ -242,6 +246,7 @@ def run(args: argparse.Namespace) -> str:
         return _watch(hub, args, machine, role)
 
     sid = args.session_id
+    created_session = False
     if not sid:
         if not args.create:
             sid = _select_session(hub, attach_latest=args.attach_latest)
@@ -255,7 +260,7 @@ def run(args: argparse.Namespace) -> str:
                     "resolution": args.resolution,
                     "fps": args.fps,
                     "bitrate_mbps": args.bitrate_mbps,
-                    "hdr": bool(args.hdr),
+                    "hdr": args.hdr,
                 }.items()
                 if value is not None
             }
@@ -276,8 +281,20 @@ def run(args: argparse.Namespace) -> str:
             sid = client.create_session(
                 hub, {key: value for key, value in payload.items() if value is not None}
             )
+            created_session = True
             print(f"created session {sid}")
-    return _capture(hub, sid, args, machine, role)
+    try:
+        return _capture(hub, sid, args, machine, role)
+    except LaunchError as exc:
+        if created_session:
+            try:
+                client.stop_session(hub, sid)
+                print(f"session {sid} marked stopped after client launch failure")
+            except Exception as cleanup_exc:  # noqa: BLE001 - preserve both explicit failures
+                raise SystemExit(
+                    f"{exc}; additionally failed to stop created session {sid}: {cleanup_exc}"
+                ) from cleanup_exc
+        raise SystemExit(str(exc)) from exc
 
 
 def _session_started_at(hub: str, sid: str) -> Optional[datetime]:
@@ -535,7 +552,7 @@ def _capture(hub: str, sid: str, args: argparse.Namespace, machine: str, role: s
                 text=True, bufsize=1, encoding="utf-8", errors="replace",
             )
         except OSError as e:
-            raise SystemExit(f"failed to launch {cmd!r}: {e}")
+            raise LaunchError(f"failed to launch {cmd!r}: {e}") from e
         stderr_buf = []
         threading.Thread(target=_reader, args=(launched.stdout, stderr_buf, stderr_lock),
                          daemon=True).start()
@@ -817,7 +834,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--resolution")
     p.add_argument("--fps", type=int)
     p.add_argument("--bitrate-mbps", type=int, dest="bitrate_mbps")
-    p.add_argument("--hdr", action="store_true")
+    hdr = p.add_mutually_exclusive_group()
+    hdr.add_argument("--hdr", action="store_const", const=True, default=None)
+    hdr.add_argument("--no-hdr", action="store_const", const=False, dest="hdr")
     return p
 
 

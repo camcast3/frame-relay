@@ -38,6 +38,8 @@ When adding support for a new OS command or log shape:
 - **Client creates session** (`--create`) — recommended matched-client workflow; the host watcher follows.
 - **Client attaches** (`--attach-latest` or auto-select) — host-created workflow without ID copy/paste.
 - **Launch mode** (`--launch` / `--launch-client`) — wraps the client app and captures buffered logs from live stderr instead of waiting for a file flush.
+- **Steam launch mode** (`steamlaunch.py`) — reads a validated user profile, preserves Steam's
+  expanded `%command%` as argument tokens, then delegates to the normal create/launch/stop flow.
 
 Other invariants worth preserving:
 
@@ -47,6 +49,23 @@ Other invariants worth preserving:
 - network-path choices are fixed literals, not free-form text
 
 Operator workflows live in [../user/host-client-setup.md](../user/host-client-setup.md), [../user/agentless-capture.md](../user/agentless-capture.md), and [../user/first-multi-client-test.md](../user/first-multi-client-test.md).
+
+## Steam setup boundary
+
+[../../collectors/asl_collector/steamsetup.py](../../collectors/asl_collector/steamsetup.py)
+contains the shared Windows/Linux setup logic. Native shell/PowerShell/CMD files remain thin:
+
+- profiles use XDG directories on Linux and `%LOCALAPPDATA%\ApolloStreamingLab` on Windows
+- `client_role` is required and limited to `moonlight` or `artemis`
+- setup may parse `shortcuts.vdf` read-only to find a non-Steam shortcut's unsigned grid ID
+- setup installs custom grid files but never rewrites Steam shortcut records
+- Moonlight and Artemis map to the same role-neutral artwork bundle
+- invalid config or hub session creation is fail-closed; the client app must not launch untracked
+- a client launch failure stops a session created by that invocation, but never an attached one
+
+Original artwork and provenance live under
+[../../assets/steam/streaming-client](../../assets/steam/streaming-client). Preserve the four
+Steam dimensions/names and verify redistribution terms for any replacement assets.
 
 ## Display evidence and console-session requirements
 

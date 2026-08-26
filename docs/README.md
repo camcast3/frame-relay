@@ -10,6 +10,8 @@ Start with [User/operator guides](./user/README.md).
   walkthrough; begin here.
 - [Host & client setup](./user/host-client-setup.md) — one-time setup for the hub, Apollo host,
   and clients.
+- [Steam Game Mode / Big Picture launcher](./user/steam-game-mode.md) — automatic tracked
+  Moonlight/Artemis launches on Windows and Linux.
 - [Deploying the hub](./user/deploy.md) — LAN/WireGuard, tailnet-only, or direct-on-host
   deployment.
 - [Troubleshooting](./user/troubleshooting.md) — common streaming failures and where to look in a

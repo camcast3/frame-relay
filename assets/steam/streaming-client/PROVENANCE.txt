@@ -1,0 +1,9 @@
+Apollo Streaming Lab streaming-client artwork
+
+This artwork was created as original work specifically for this repository.
+It is role-neutral and intended for identical use by Moonlight and Artemis.
+It contains no copied Moonlight or Artemis trademarks, logos, or artwork assets.
+
+SPDX-License-Identifier: CC0-1.0
+The artwork is dedicated to the public domain under CC0 1.0.
+Editable source: streaming-client-master.svg

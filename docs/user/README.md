@@ -13,6 +13,8 @@ zero-context walkthrough from Docker start to a completed matched comparison.
 
 - [Host & client setup](./host-client-setup.md) — one-time setup plus local and remote capture
   flows.
+- [Steam Game Mode / Big Picture launcher](./steam-game-mode.md) — make a Moonlight or Artemis
+  Steam shortcut automatically create, capture, and stop each test on Windows or Linux.
 - [Deploying the hub](./deploy.md) — LAN/WireGuard, tailnet-only, or direct-on-host deployment.
 - [Agent-less capture (Android & Xbox)](./agentless-capture.md) — manual evidence entry when the
   collector cannot run.
