@@ -76,6 +76,11 @@ collectors/linux/asl-session.sh --hub-url HUB --source client --role moonlight -
     --game-title "Test game" --launch-client --interval 15
 ```
 
+For couch use, the same flow can be attached to an existing Steam shortcut on either platform.
+The setup asks whether the client is Moonlight or Artemis, installs shared artwork, and prints one
+Launch Options line to paste manually. See
+[Steam Game Mode / Big Picture launcher](./steam-game-mode.md).
+
 The host back-fills its log from the session's start time, so the connect/handshake lines are
 captured even though the host joined a moment later. It moves on when the session is stopped or
 when the next one starts.

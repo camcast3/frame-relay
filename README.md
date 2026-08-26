@@ -45,6 +45,8 @@ Then open `http://<hub-host>:8080` from the devices that will capture or review 
   finish walkthrough; begin here.
 - **[Host & client setup](./docs/user/host-client-setup.md)** — one-time setup for the hub,
   Apollo host, and clients, plus local and remote capture flows.
+- **[Steam Game Mode / Big Picture launcher](./docs/user/steam-game-mode.md)** — wrap an existing
+  Moonlight or Artemis Steam shortcut so every launch is captured automatically.
 - **[Deploying the hub](./docs/user/deploy.md)** — LAN/WireGuard, tailnet-only, or direct-on-host
   deployment.
 - **[Agent-less capture (Android & Xbox)](./docs/user/agentless-capture.md)** — manual evidence

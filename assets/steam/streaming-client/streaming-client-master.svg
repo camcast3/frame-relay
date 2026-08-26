@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <title>FRAME RELAY streaming-client artwork master</title>
+  <desc>Editable role-neutral artwork with stacked video frames, a forward chevron, and relay lines.</desc>
+  <defs>
+    <linearGradient id="graphite" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#090a0c"/>
+      <stop offset=".58" stop-color="#111419"/>
+      <stop offset="1" stop-color="#1d2229"/>
+    </linearGradient>
+    <pattern id="grid" width="72" height="72" patternUnits="userSpaceOnUse">
+      <path d="M72 0H0V72" fill="none" stroke="#aeb6b1" stroke-opacity=".08"/>
+    </pattern>
+  </defs>
+
+  <g id="background">
+    <rect width="1920" height="1080" fill="url(#graphite)"/>
+    <path d="M1110 0h390L980 1080H590z" fill="#343b44" opacity=".22"/>
+    <path d="M1525 0h210l-470 1080h-215z" fill="#22272e" opacity=".72"/>
+    <rect width="1920" height="1080" fill="url(#grid)"/>
+    <path d="M0 1028h620m42 0h182m38 0h1038" fill="none" stroke="#b7f34a" stroke-width="5" opacity=".68"/>
+    <path d="M0 1048h1040m32 0h92" fill="none" stroke="#f2ad4b" stroke-width="3" opacity=".55"/>
+  </g>
+
+  <g id="relay-mark" transform="translate(525 520)">
+    <g id="signal-lines" fill="none" stroke-linecap="square">
+      <path d="M-410-118h135m-188 118h188m-116 118h116" stroke="#59616b" stroke-width="10"/>
+      <path d="M275-118h190M275 0h265M275 118h145" stroke="#b7f34a" stroke-width="10"/>
+    </g>
+    <g id="signal-nodes">
+      <rect x="-473" y="-128" width="20" height="20" rx="4" fill="#f2ad4b"/>
+      <rect x="-423" y="108" width="20" height="20" rx="4" fill="#777f88"/>
+      <rect x="455" y="-128" width="20" height="20" rx="4" fill="#777f88"/>
+      <rect x="530" y="-10" width="20" height="20" rx="4" fill="#b7f34a"/>
+      <rect x="410" y="108" width="20" height="20" rx="4" fill="#f2ad4b"/>
+    </g>
+    <g id="stacked-viewports">
+      <rect x="-164" y="-196" width="390" height="246" rx="34" fill="#171b20" stroke="#4e565f" stroke-width="10"/>
+      <rect x="-203" y="-157" width="390" height="246" rx="34" fill="#111419" stroke="#858d95" stroke-width="10"/>
+      <rect x="-242" y="-118" width="390" height="246" rx="34" fill="#0c0e11" stroke="#f1f3ef" stroke-width="12"/>
+      <path d="M-76-58 40 5-76 68h67L106 5-9-58z" fill="#b7f34a"/>
+      <path d="M82 104h42v-42" fill="none" stroke="#f2ad4b" stroke-width="9"/>
+    </g>
+  </g>
+
+  <g id="wordmark" transform="translate(1050 370)">
+    <text fill="#f3f5f2" font-family="Segoe UI, sans-serif" font-size="148" font-weight="700" letter-spacing="4">FRAME</text>
+    <text y="142" fill="#b7f34a" font-family="Segoe UI, sans-serif" font-size="148" font-weight="700" letter-spacing="4">RELAY</text>
+    <path d="M2 200h88" stroke="#f2ad4b" stroke-width="7"/>
+    <text x="115" y="209" fill="#aeb6b1" font-family="Segoe UI, sans-serif" font-size="25" font-weight="600" letter-spacing="5">MOTION / IMAGE / RESPONSE</text>
+  </g>
+</svg>

@@ -1,0 +1,10 @@
+FRAME RELAY streaming-client artwork
+
+This original, role-neutral artwork was created specifically for this
+repository. The stacked viewport mark, forward chevron, signal lines, layout,
+and wordmark are original. No third-party trademarks, logos, or artwork assets
+were copied or incorporated.
+
+SPDX-License-Identifier: CC0-1.0
+The artwork is dedicated to the public domain under CC0 1.0.
+Editable source: streaming-client-master.svg

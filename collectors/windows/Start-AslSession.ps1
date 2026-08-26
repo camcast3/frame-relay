@@ -74,10 +74,12 @@ param(
   [string]$Resolution,
   [int]$Fps,
   [int]$BitrateMbps,
-  [switch]$Hdr
+  [switch]$Hdr,
+  [switch]$NoHdr
 )
 
 $ErrorActionPreference = 'Stop'
+if ($Hdr -and $NoHdr) { throw '-Hdr and -NoHdr are mutually exclusive.' }
 
 # Prefer the real interpreter; the bare 'python' alias can be the Store stub.
 $python = if (Get-Command py -ErrorAction SilentlyContinue) { @('py', '-3') }
@@ -123,5 +125,6 @@ if ($Resolution)  { $asl += @('--resolution', $Resolution) }
 if ($Fps)         { $asl += @('--fps', $Fps) }
 if ($BitrateMbps) { $asl += @('--bitrate-mbps', $BitrateMbps) }
 if ($Hdr)         { $asl += '--hdr' }
+if ($NoHdr)       { $asl += '--no-hdr' }
 
 & $python[0] @($python[1..($python.Length - 1)] + $asl)
