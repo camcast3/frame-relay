@@ -35,6 +35,6 @@ differences, but are subjective without calibrated capture hardware.
 
 ## What each path stresses
 - **local-LAN:** encoder/decoder latency, Wi-Fi quality, NIC-speed mismatch (buffer overrun).
-- **remote-WireGuard:** tunnel MTU (try host MTU ~1420), UniFi uplink saturation, WAN jitter/loss.
+- **remote-WireGuard:** tunnel MTU (try host MTU ~1420), router/uplink saturation, WAN jitter/loss.
 - **remote-Tailscale:** DERP relay vs direct, MTU, WAN jitter/loss, encryption overhead.
 - **remote-WAN:** uplink saturation, bufferbloat, NAT/firewall — use MIST for NAT diagnosis.

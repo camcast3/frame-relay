@@ -4,7 +4,7 @@
 def _session(client, role, label="cyberpunk-hdr", status="working", rating=4, **extra):
     payload = {
         "name": f"{role} HDR",
-        "host": "DOMINO",
+        "host": "STREAM-HOST",
         "client": f"{role}-box",
         "network_path": "local-LAN",
         "comparison_label": label,

@@ -137,7 +137,7 @@ def test_capture_posts_host_observations_and_effective_patch(tmp_path, monkeypat
         client_platform="SteamDeck",
         client_version="1.2.3",
     )
-    session._capture("http://hub", "s-host", args, "DOMINO", "apollo")
+    session._capture("http://hub", "s-host", args, "STREAM-HOST", "apollo")
 
     assert len(posted_logs) == 1
     assert posted_logs[0]["meta"] == {

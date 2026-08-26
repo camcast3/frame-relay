@@ -14,6 +14,8 @@ Keep [../../.github/copilot-instructions.md](../../.github/copilot-instructions.
 - [security-and-operations.md](./security-and-operations.md) — LAN trust boundary, screenshot-token design, artifacts/privacy, persistence, firewall/deployment concerns.
 - [dependency-security.md](./dependency-security.md) — seven-day holdback, hash locks, image
   digests, vulnerability gates, and update procedure.
+- [public-release-checklist.md](./public-release-checklist.md) — source/history review, GitHub
+  security settings, branch protection, and final checks before changing visibility.
 
 ## Editing policy
 

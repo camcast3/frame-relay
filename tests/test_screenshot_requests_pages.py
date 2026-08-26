@@ -57,7 +57,7 @@ def _parse(html: str) -> _IdParser:
 def _create(client, **overrides):
     payload = {
         "name": "screenshot-page",
-        "host": "DOMINO",
+        "host": "STREAM-HOST",
         "client": "couch",
         "network_path": "local-LAN",
     }

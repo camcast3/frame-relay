@@ -44,7 +44,7 @@ For unattended setup:
 ```bash
 collectors/linux/install-steam-wrapper.sh \
   --client-role moonlight \
-  --hub-url http://192.168.69.159:8080 \
+  --hub-url http://192.0.2.10:8080 \
   --shortcut Moonlight
 ```
 
@@ -80,7 +80,7 @@ The same setup questions are used. For unattended setup:
 ```powershell
 .\collectors\windows\Install-AslSteamWrapper.ps1 `
   -ClientRole artemis `
-  -HubUrl http://192.168.69.159:8080 `
+  -HubUrl http://192.0.2.10:8080 `
   -Shortcut Artemis
 ```
 
@@ -108,12 +108,12 @@ session-name template, and collector intervals. Add known test controls directly
 
 ```json
 {
-  "hub_url": "http://192.168.69.159:8080",
+  "hub_url": "http://192.0.2.10:8080",
   "client_role": "moonlight",
   "name_template": "{hostname} - {client_role} - {timestamp}",
-  "comparison_label": "ff7r-4k120-sdr-lan-v1",
+  "comparison_label": "example-game-4k120-sdr-lan-v1",
   "apollo_app": "Playnite",
-  "game_title": "FINAL FANTASY VII REMAKE INTERGRADE",
+  "game_title": "Example Game",
   "network_path": "local-LAN",
   "requested_settings": {
     "codec": "AV1",

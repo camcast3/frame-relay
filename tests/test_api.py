@@ -2,7 +2,7 @@
 
 
 def _create(client, **kw):
-    payload = {"name": "t", "host": "DOMINO", "client": "couch",
+    payload = {"name": "t", "host": "STREAM-HOST", "client": "couch",
                "network_path": "local-LAN", "codec": "HEVC"}
     payload.update(kw)
     r = client.post("/api/sessions", json=payload)
@@ -91,7 +91,7 @@ def test_awaiting_client_filter(client):
     session must stay attachable until a client collector actually posts something.
     """
     named = _create(client, name="named-but-unattached")          # client name set, no logs
-    r = client.post("/api/sessions", json={"name": "open", "host": "DOMINO", "client": None})
+    r = client.post("/api/sessions", json={"name": "open", "host": "STREAM-HOST", "client": None})
     unnamed = r.json()                                            # no client name, no logs
     attached = _create(client, name="already-attached")
     client.post(f"/api/sessions/{attached['id']}/logs",

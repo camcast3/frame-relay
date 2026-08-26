@@ -41,7 +41,7 @@ SCENARIOS: dict[str, dict[str, Any]] = {
             "lan_encryption_mode": "auto",
             "wan_encryption_mode": "enabled",
         },
-        "what_to_watch_for": "Tunnel MTU (try host MTU ~1420), UniFi uplink saturation, loss above 5%, jitter above 1 ms.",
+        "what_to_watch_for": "Tunnel MTU (try host MTU ~1420), router/uplink saturation, loss above 5%, jitter above 1 ms.",
     },
     "remote-WAN": {
         "codec": "HEVC",

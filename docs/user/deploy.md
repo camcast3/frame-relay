@@ -6,7 +6,7 @@ running hub, see [host-client-setup.md](./host-client-setup.md).
 
 | Option | Command | Reachable at | When to use |
 |--------|---------|--------------|-------------|
-| **LAN / WireGuard** (recommended) | `docker compose -f docker-compose.lan.yaml up -d --build` | `http://<watchtower-ip>:8080` | Devices are on your LAN or reach it over your UniFi **WireGuard** tunnel. |
+| **LAN / WireGuard** (recommended) | `docker compose -f docker-compose.lan.yaml up -d --build` | `http://<hub-host>:8080` | Devices are on your LAN or reach it over an operator-managed **WireGuard** tunnel. |
 | **Tailnet-only** | Requires a maintainer-reviewed tracked image update, then `docker compose up -d --build` | `https://apollo-streaming-lab.<tailnet>.ts.net` | Only when an aged, scan-clean Tailscale image is available. |
 | **Direct on the host** (no Docker) | `python -m hub` | `http://<host-ip>:8080` | Run it on the Windows/Linux machine you already use — no Docker. Bind to all interfaces + open the firewall to reach it from other devices. |
 
@@ -18,18 +18,18 @@ in the `hub-data` volume (`/data` in the container → the SQLite DB + uploaded 
 ## Option A — LAN / WireGuard (recommended)
 
 Publishes port `8080` on the Docker host. Local devices hit the LAN IP directly; remote devices
-reach the *same* IP over their WireGuard tunnel (UniFi routes the WG VLAN `192.168.2.0/24` to it).
-Access control is your firewall's job — this option has no built-in gate.
+may reach the same IP through an operator-managed WireGuard route. Access control is your
+firewall's job — this option has no built-in gate.
 
 ```powershell
-# on the watchtower Docker host
+# on the Docker host
 copy .env.example .env    # set Copilot and screenshot-request secrets as needed
 docker compose -f docker-compose.lan.yaml up -d --build
 docker compose -f docker-compose.lan.yaml ps
 ```
 
-Then open `http://<watchtower-ip>:8080`. Allow the WG VLAN → `hub:8080` in your firewall so
-remote clients can reach it. `TS_AUTHKEY` is **not** needed for this option.
+Then open `http://<hub-host>:8080`. If remote clients use WireGuard, allow their configured client
+CIDR to reach the hub on TCP 8080. `TS_AUTHKEY` is **not** needed for this option.
 
 ---
 
@@ -58,7 +58,7 @@ docker scout cves --only-severity critical,high --exit-code `
 5. Apply [`../../deploy/tailscale-acl.snippet.hujson`](../../deploy/tailscale-acl.snippet.hujson) in the
    Tailscale admin console (defines `tag:apollo-hub` / `tag:apollo-collector` and who may reach
    the hub on `tcp:443`).
-6. Start on the watchtower Docker host:
+6. Start on the Docker host:
 
    ```powershell
    docker compose up -d --build

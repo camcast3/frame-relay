@@ -58,21 +58,21 @@ def test_analysis_filters_incompatible_same_label_peers(monkeypatch):
     current = {
         "id": "current",
         "comparison_label": "game-hdr",
-        "host": "DOMINO",
+        "host": "STREAM-HOST",
         "network_path": "local-LAN",
         "requested_settings": {"codec": "HEVC", "hdr": True},
     }
     compatible = {
         "id": "compatible",
         "comparison_label": "game-hdr",
-        "host": "DOMINO",
+        "host": "STREAM-HOST",
         "network_path": "local-LAN",
         "requested_settings": {"codec": "HEVC", "hdr": True},
     }
     incompatible = {
         "id": "incompatible",
         "comparison_label": "game-hdr",
-        "host": "DOMINO",
+        "host": "STREAM-HOST",
         "network_path": "local-LAN",
         "requested_settings": {"codec": "AV1", "hdr": True},
     }

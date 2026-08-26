@@ -146,7 +146,7 @@ def test_existing_json_requests_still_post_application_json(monkeypatch):
 
     monkeypatch.setattr(client.urllib.request, "urlopen", fake_urlopen)
 
-    client.post_log("http://hub", "session-3", "host", "apollo", "hello", machine="DOMINO")
+    client.post_log("http://hub", "session-3", "host", "apollo", "hello", machine="STREAM-HOST")
 
     assert seen["url"] == "http://hub/api/sessions/session-3/logs"
     assert seen["headers"]["content-type"] == "application/json"
@@ -154,6 +154,6 @@ def test_existing_json_requests_still_post_application_json(monkeypatch):
         "source": "host",
         "role": "apollo",
         "content": "hello",
-        "machine": "DOMINO",
+        "machine": "STREAM-HOST",
     }
     assert seen["timeout"] == 30

@@ -15,7 +15,7 @@ PNG_BYTES = b64decode(
 def _create(client, **overrides):
     payload = {
         "name": "screenshot-test",
-        "host": "DOMINO",
+        "host": "STREAM-HOST",
         "client": "couch",
         "network_path": "local-LAN",
     }
@@ -167,7 +167,7 @@ def test_complete_screenshot_request_creates_artifact_and_enriches_bundle(client
         f"/api/sessions/{sid}/screenshot-requests/{request_id}/complete",
         data={
             "source": "host",
-            "machine": "DOMINO",
+            "machine": "STREAM-HOST",
             "captured_at": "2026-08-13T12:00:00Z",
             "display_name": "Moonlight Monitor",
         },
@@ -179,7 +179,7 @@ def test_complete_screenshot_request_creates_artifact_and_enriches_bundle(client
 
     assert body["status"] == "completed"
     assert body["target_source"] == "host"
-    assert body["machine"] == "DOMINO"
+    assert body["machine"] == "STREAM-HOST"
     assert body["completed_at"] == "2026-08-13T12:00:00Z"
     assert body["artifact_id"] is not None
     assert body["artifact_kind"] == "requested_host_screenshot"
@@ -230,7 +230,7 @@ def test_complete_screenshot_request_is_atomic_under_race(client):
                 request_id=request_id,
                 source="host",
                 filename=filename,
-                machine="DOMINO",
+                machine="STREAM-HOST",
                 caption=filename,
                 kind="requested_host_screenshot",
             )

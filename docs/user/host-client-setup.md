@@ -1,14 +1,13 @@
 # Host & client setup — local and remote
 
-How to wire up the **Apollo host**, the **hub**, and each **Moonlight/Artemis client** for the
-two scenarios you test:
+How to wire up the **Apollo host**, the **hub**, and each **Moonlight/Artemis client** for two
+common scenarios:
 
 - **Local** — devices are on your LAN and connect normally.
-- **Remote** — devices connect through your **UniFi WireGuard** server (each device has its own
-  provisioned `.conf`). Remote clients land on the **WireGuard VLAN `192.168.2.0/24`**.
+- **Remote** — devices connect through an operator-managed **WireGuard** tunnel.
 
-> This app does **not** manage WireGuard — bring your own tunnel (UniFi provisions the confs).
-> You control VLAN/firewall segmentation; the notes below only say what must be reachable.
+> This app does **not** manage WireGuard. You control tunnel provisioning, routing, and firewall
+> segmentation; the notes below only say what must be reachable.
 
 Every test involves two things a device talks to: the **Apollo host** (the stream) and the
 **hub** (records the session). Both are reached over the LAN locally, or over WireGuard remotely.
@@ -21,19 +20,19 @@ Every test involves two things a device talks to: the **Apollo host** (the strea
    Log file: `C:\Program Files\Apollo\config\sunshine.log`.
 3. **Firewall:** allow Apollo's ports on the interfaces clients use (LAN, and the WG-routed
    path): TCP `47984/47989/48010`, UDP `47998-48000`.
-4. **Remote reachability:** ensure WireGuard clients (`192.168.2.x`) can route to the host's IP.
-   With WG terminating on the UniFi router this is a firewall/route rule you own — no port
-   forwarding needed.
+4. **Remote reachability:** ensure the configured WireGuard client CIDR can route to the host's
+   IP. This is a firewall/route rule you own; port forwarding is usually unnecessary when the
+   tunnel terminates inside your network.
 
-## B. One-time: hub (on watchtower)
+## B. One-time: hub
 Pick the deployment that matches how your devices connect:
 
-- **LAN + WireGuard (matches your setup):**
+- **LAN + WireGuard:**
   ```bash
   docker compose -f docker-compose.lan.yaml up -d --build
   ```
-  Hub is at `http://<watchtower-ip>:8080`. Local devices hit that IP directly; remote devices
-  reach the same IP over WireGuard. Allow the WG VLAN → hub:8080 in your firewall.
+  Hub is at `http://<hub-host>:8080`. Local devices hit that IP directly; remote devices can reach
+  the same IP over WireGuard when routing and firewall rules allow it.
 - **Tailnet-only (optional):** `docker compose up -d --build` (Tailscale sidecar, `tailscale
   serve`); reachable only at `https://apollo-streaming-lab.<tailnet>.ts.net`. Use this if you'd
   rather not expose a LAN port. See [deploy.md](./deploy.md).
@@ -44,7 +43,8 @@ If you want on-demand host/client screenshots from the active session page, also
 `ASL_SCREENSHOT_TOKEN` on the hub, the Apollo host, and every collector-capable client before
 starting their collectors. The operator flow is in [first-multi-client-test.md](./first-multi-client-test.md).
 
-Below, `HUB` = the URL from this step (e.g. `http://192.168.86.246:8080`).
+Below, `HUB` = the URL from this step. Documentation examples use
+`http://192.0.2.10:8080`; replace that reserved example address with your actual hub address.
 
 ---
 
@@ -153,15 +153,15 @@ one. Tune the cadence with `-PostIntervalSeconds` / `--post-interval` (`0` = pos
 ## D. Per test — REMOTE (WireGuard)
 Same as local, with three differences:
 
-1. **Bring up WireGuard first** on the remote device (its UniFi-provisioned `.conf`), then point
+1. **Bring up WireGuard first** on the remote device, then point
    Moonlight/Artemis at the host's LAN IP (reachable through the tunnel) and connect.
-2. **`HUB`** is the watchtower IP reachable over WireGuard (same `http://<watchtower-ip>:8080`,
+2. **`HUB`** is the hub IP reachable over WireGuard (same `http://<hub-host>:8080`,
    as long as your firewall lets the WG VLAN reach it).
-3. The host collector already defaults the WireGuard subnet to `192.168.2.0/24`, so a remote
-   client is classified **`remote-WireGuard`** automatically. Override only if your WG VLAN
-   differs:
+3. Tell the host collector which client CIDR belongs to WireGuard so those connections are
+   classified **`remote-WireGuard`**:
    ```powershell
-   collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source host -Watch -WgSubnet 192.168.2.0/24
+   collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source host -Watch `
+       -WgSubnet <wireguard-client-cidr>
    ```
 
 **iperf3 over the tunnel** (port 5201; open it to the WG VLAN on the host). **iperf3 must be
@@ -178,7 +178,7 @@ python network/iperf_runner.py --host <host-ip-over-wg> --hub-url HUB
 ## E. Network-path classification (how the collector labels a session)
 | Client IP seen by the host | Network path      |
 |----------------------------|-------------------|
-| `192.168.2.0/24` (WG VLAN) | **remote-WireGuard** |
+| configured `--wg-subnet` / `-WgSubnet` CIDR | **remote-WireGuard** |
 | other private (RFC1918)    | **local-LAN**     |
 | `100.64.0.0/10`            | **remote-Tailscale** (only if you use Tailscale) |
 | public                     | **remote-WAN**    |

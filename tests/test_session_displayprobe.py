@@ -205,13 +205,13 @@ def test_host_capture_posts_before_during_after_displays_and_dedups(tmp_path, mo
     )
 
     args = _args(log=[str(log_path)], post_interval=0.01)
-    session._capture("http://hub", "s-host", args, "DOMINO", "apollo")
+    session._capture("http://hub", "s-host", args, "STREAM-HOST", "apollo")
 
     assert [sample["phase"] for sample in posted_display_batches[0]] == ["before", "during"]
     assert [sample["phase"] for sample in posted_display_batches[1]] == ["during"]
     assert [sample["phase"] for sample in posted_display_batches[2]] == ["after"]
     assert len(posted_display_batches) == 3
-    assert all(sample["machine"] == "DOMINO" for batch in posted_display_batches for sample in batch)
+    assert all(sample["machine"] == "STREAM-HOST" for batch in posted_display_batches for sample in batch)
     assert posted_display_batches[0][0]["width"] == 3840
     assert posted_display_batches[1][0]["width"] == 2560
     assert posted_display_batches[2][0]["width"] == 2560
@@ -281,7 +281,7 @@ def test_short_capture_records_true_during_snapshot_before_teardown(tmp_path, mo
 
     session._capture(
         "http://hub", "short", _args(log=[str(log_path)], post_interval=0),
-        "DOMINO", "apollo",
+        "STREAM-HOST", "apollo",
     )
 
     assert [[row["phase"] for row in batch] for batch in posted] == [
@@ -325,7 +325,7 @@ def test_watch_capture_omits_unreliable_before_baseline(tmp_path, monkeypatch):
     session._capture(
         "http://hub", "watched",
         _args(log=[str(log_path)], post_interval=0, watch_interval=0),
-        "DOMINO", "apollo", watch=True,
+        "STREAM-HOST", "apollo", watch=True,
     )
 
     phases = [row["phase"] for batch in posted for row in batch]

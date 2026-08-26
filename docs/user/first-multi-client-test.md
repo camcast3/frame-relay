@@ -2,8 +2,8 @@
 
 This is the canonical start-to-finish operator guide. It assumes no prior project context.
 
-The example compares **Final Fantasy VII Remake Intergrade** across Windows Moonlight clients and
-an Xbox. Replace the game, devices, and settings as needed.
+The example compares an **Example Game** across Windows/Linux Moonlight clients and an Xbox.
+Replace the game, devices, and settings as needed.
 
 ## What the terms mean
 
@@ -25,9 +25,9 @@ Use the same comparison label and controls for every device:
 
 | Field | Example baseline |
 |---|---|
-| Comparison label | `ff7r-1080p60-sdr-lan-v1` |
+| Comparison label | `example-game-1080p60-sdr-lan-v1` |
 | Apollo application preset | `Playnite` |
-| Game title | `FINAL FANTASY VII REMAKE INTERGRADE` |
+| Game title | `Example Game` |
 | Network path | `local-LAN` |
 | Codec | `HEVC` |
 | Resolution | `1920x1080` |
@@ -36,8 +36,8 @@ Use the same comparison label and controls for every device:
 | HDR | Off |
 | Test duration | 10 minutes |
 
-Use the exact Apollo preset name. If FF7 is directly registered in Apollo, use that preset name
-instead of `Playnite`.
+Use the exact Apollo preset name. If the game is directly registered in Apollo, use that preset
+name instead of `Playnite`.
 
 For a fair hardware comparison, use **Moonlight on every device that supports it**. Changing both
 the hardware and the client app makes the result ambiguous. Compare Moonlight versus Artemis in a
@@ -69,11 +69,11 @@ Find its LAN address:
   Select-Object -First 1).IPv4Address.IPAddress
 ```
 
-This must print a plain address such as `192.168.69.159`, not an object/table. The examples below
-use:
+This must print a plain address, not an object/table. The examples below use the documentation-only
+address:
 
 ```text
-HUB=http://192.168.69.159:8080
+HUB=http://192.0.2.10:8080
 ```
 
 Open `HUB` in a browser from another device before testing. If it does not load, allow inbound
@@ -87,7 +87,7 @@ On the Windows Apollo host:
 git clone https://github.com/camcast3/apollo-streaming-lab.git
 cd apollo-streaming-lab
 .\collectors\windows\Start-AslSession.ps1 `
-  -HubUrl http://192.168.69.159:8080 `
+  -HubUrl http://192.0.2.10:8080 `
   -Source host `
   -Watch
 ```
@@ -137,12 +137,12 @@ For normal capture, let Apollo and Moonlight report the stream details. The reco
 
 ```powershell
 .\collectors\windows\Start-AslSession.ps1 `
-  -HubUrl http://192.168.69.159:8080 `
+  -HubUrl http://192.0.2.10:8080 `
   -Source client `
   -Role moonlight `
   -Create `
-  -Name "FF7R - ROG Ally" `
-  -ComparisonLabel "ff7r-1080p60-sdr-lan-v1" `
+  -Name "Example Game - Windows handheld" `
+  -ComparisonLabel "example-game-1080p60-sdr-lan-v1" `
   -LaunchClient `
   -StopSession
 ```
@@ -176,8 +176,8 @@ known requested configuration before connection:
 
 ```powershell
   -ApolloApp "Playnite" `
-  -GameTitle "FINAL FANTASY VII REMAKE INTERGRADE" `
-  -ClientPlatform "ROG Ally / Windows" `
+  -GameTitle "Example Game" `
+  -ClientPlatform "Windows handheld" `
   -NetworkPath local-LAN `
   -Codec HEVC `
   -Resolution 1920x1080 `
@@ -192,9 +192,9 @@ Change only `Name` between the hardware runs:
 
 | Device | Name |
 |---|---|
-| ROG Ally | `FF7R - ROG Ally` |
-| Legion laptop | `FF7R - Legion Laptop` |
-| MiniPC | `FF7R - MiniPC` |
+| Windows handheld | `Example Game - Windows handheld` |
+| Windows laptop | `Example Game - Windows laptop` |
+| Linux mini PC | `Example Game - Linux mini PC` |
 
 The collector creates the session and opens Moonlight. Wait 5-10 seconds at Moonlight's main
 screen before starting the stream so the host watcher has time to attach. When the repeatable
@@ -206,10 +206,10 @@ If the MiniPC runs Linux, use the equivalent command:
 
 ```bash
 collectors/linux/asl-session.sh \
-  --hub-url http://192.168.69.159:8080 \
+  --hub-url http://192.0.2.10:8080 \
   --source client --role moonlight --create \
-  --name "FF7R - MiniPC" \
-  --comparison-label "ff7r-1080p60-sdr-lan-v1" \
+  --name "Example Game - Linux mini PC" \
+  --comparison-label "example-game-1080p60-sdr-lan-v1" \
   --launch-client --stop-session
 ```
 
@@ -223,10 +223,10 @@ Xbox cannot run the collector, so its client evidence is entered through the hub
 
 1. Open `HUB/sessions/new`.
 2. Create a session with:
-   - Name: `FF7R - Xbox - 1080p60 SDR`
-   - Comparison/test case: `ff7r-1080p60-sdr-lan-v1`
+   - Name: `Example Game - Xbox - 1080p60 SDR`
+   - Comparison/test case: `example-game-1080p60-sdr-lan-v1`
    - Apollo preset: `Playnite`
-   - Game/process: `FINAL FANTASY VII REMAKE INTERGRADE`
+   - Game/process: `Example Game`
    - Client app: `moonlight`
    - Client platform: `Xbox`
    - Network path: `local-LAN`
@@ -291,7 +291,7 @@ Do not start the next client while the previous session remains active.
 After all runs, open:
 
 ```text
-HUB/comparisons/ff7r-1080p60-sdr-lan-v1
+HUB/comparisons/example-game-1080p60-sdr-lan-v1
 ```
 
 The comparison page first reports whether the controlled fields match. Resolve or explain any
@@ -306,7 +306,7 @@ Copilot analysis but is optional.
 Do not mix SDR and HDR sessions under one label. Create a second controlled test, for example:
 
 ```text
-ff7r-4k60-hdr-lan-v1
+example-game-4k60-hdr-lan-v1
 ```
 
 Use the same procedure with a common HDR-capable resolution, HEVC/AV1 choice, bitrate, display
