@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Apollo Streaming Lab is an early-stage self-hosted project. Security fixes are made on the
+Frame Relay is an early-stage self-hosted project. Security fixes are made on the
 current `main` branch; older commits and deployments are not supported release lines.
 
 ## Report a vulnerability privately
@@ -11,7 +11,7 @@ Do not open a public issue for a suspected vulnerability.
 
 Use GitHub's private vulnerability reporting:
 
-<https://github.com/camcast3/apollo-streaming-lab/security/advisories/new>
+<https://github.com/camcast3/frame-relay/security/advisories/new>
 
 Include:
 

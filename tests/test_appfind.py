@@ -1,7 +1,7 @@
 """Client-app discovery for --launch-client (pure candidate lists, no filesystem)."""
 import os
 
-from asl_collector import appfind
+from frame_relay_collector import appfind
 
 WIN_ENV = {
     "ProgramFiles": r"C:\Program Files",

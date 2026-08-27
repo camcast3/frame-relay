@@ -123,7 +123,9 @@ def post_to_hub(hub_url: str, session_id: str, result: dict[str, Any]) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run the sanctioned Apollo iperf3 reverse UDP test.")
+    parser = argparse.ArgumentParser(
+        description="Run the Frame Relay iperf3 reverse UDP test."
+    )
     parser.add_argument("--host", required=True, help="iperf3 server host")
     parser.add_argument("--duration", type=int, default=60)
     parser.add_argument("--bitrate", default="50M")

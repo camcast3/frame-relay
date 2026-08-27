@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Apollo Streaming Lab", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Frame Relay", version="0.1.0", lifespan=lifespan)
 
 app.include_router(sessions.router)
 app.include_router(ingest.router)

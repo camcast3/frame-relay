@@ -44,7 +44,7 @@
     <p id="screenshot-{{ source }}-error" class="small screenshot-request-error" {% if not latest or not latest.error %}hidden{% endif %}>{{ latest.error if latest and latest.error else "" }}</p>
   </section>
 {%- endmacro %}
-{% block title %}{{ s.name or s.id }} · Apollo Streaming Lab{% endblock %}
+{% block title %}{{ s.name or s.id }} · Frame Relay{% endblock %}
 {% block content %}
 <div id="session" data-id="{{ s.id }}" data-status="{{ s.status }}">
   <div class="crumb"><a href="/">← Sessions</a></div>
@@ -68,9 +68,9 @@
           {% endfor %}
         </select>
       </label>
-      <button class="btn" onclick="ASL.saveOutcome()">Save outcome</button>
-      {% if s.status != 'stopped' %}<button class="btn" onclick="ASL.stopSession()">Stop session</button>{% endif %}
-      <button class="btn danger" onclick="ASL.deleteSession()">Delete</button>
+      <button class="btn" onclick="FrameRelay.saveOutcome()">Save outcome</button>
+      {% if s.status != 'stopped' %}<button class="btn" onclick="FrameRelay.stopSession()">Stop session</button>{% endif %}
+      <button class="btn danger" onclick="FrameRelay.deleteSession()">Delete</button>
     </div>
   </section>
 
@@ -237,10 +237,10 @@
   <section class="card">
     <div class="card-head"><h2>Logs — host vs client</h2>
       <div class="log-tools">
-        <input id="log-filter" placeholder="filter…" oninput="ASL.applyLogFilter()">
-        <label class="check"><input type="checkbox" id="hl" checked onchange="ASL.applyLogFilter()"> highlight errors</label>
-        <label class="check"><input type="checkbox" id="wrap" checked onchange="ASL.applyLogView()"> wrap</label>
-        <label class="check"><input type="checkbox" id="stack" onchange="ASL.applyLogView()"> stack</label>
+        <input id="log-filter" placeholder="filter…" oninput="FrameRelay.applyLogFilter()">
+        <label class="check"><input type="checkbox" id="hl" checked onchange="FrameRelay.applyLogFilter()"> highlight errors</label>
+        <label class="check"><input type="checkbox" id="wrap" checked onchange="FrameRelay.applyLogView()"> wrap</label>
+        <label class="check"><input type="checkbox" id="stack" onchange="FrameRelay.applyLogView()"> stack</label>
         <label class="check"><input type="checkbox" id="sync" checked> sync scroll</label>
       </div>
     </div>
@@ -351,7 +351,7 @@
   <section class="card">
     <h2>Notes / experience</h2>
     <textarea id="notes" rows="4">{{ s.notes or "" }}</textarea>
-    <button class="btn" onclick="ASL.saveNotes()">Save notes</button>
+    <button class="btn" onclick="FrameRelay.saveNotes()">Save notes</button>
   </section>
 
   <section class="card">
@@ -399,7 +399,7 @@
 
   <section class="card copilot">
     <div class="card-head"><h2>🔎 Copilot analysis</h2>
-      <button class="btn primary" onclick="ASL.analyze()">Analyze this session</button></div>
+      <button class="btn primary" onclick="FrameRelay.analyze()">Analyze this session</button></div>
     <div id="diagnosis" class="diagnosis">{% if s.diagnosis %}<pre>{{ s.diagnosis }}</pre>{% else %}<p class="muted">No diagnosis yet. Click <b>Analyze</b> to have Copilot decipher this session (opt-in — logs are only sent when you ask).</p>{% endif %}</div>
     <h3>Ask a follow-up</h3>
     <div id="chat">
@@ -422,4 +422,4 @@
 <script id="screenshot-request-data" type="application/json">{{ b.screenshot_requests | tojson }}</script>
 <script id="bundle-data" type="application/json">{{ b.link_samples | tojson }}</script>
 {% endblock %}
-{% block scripts %}<script>ASL.initSessionPage();</script>{% endblock %}
+{% block scripts %}<script>FrameRelay.initSessionPage();</script>{% endblock %}

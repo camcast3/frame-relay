@@ -1,6 +1,6 @@
 """Copilot-powered session analysis.
 
-Three interchangeable backends, selected by ASL_COPILOT_BACKEND:
+Three interchangeable backends, selected by FRAME_RELAY_COPILOT_BACKEND:
 
 * ``mock`` (default) - a fully offline, rule-based analyzer. No token, no network. It is
   deliberately useful on its own so the feature is demoable and testable, and it doubles as
@@ -551,8 +551,12 @@ def _mock(ctx: dict[str, Any], question: str | None) -> str:
 
     if question:
         lines.append(f"\n**Re: your question** \"{question}\" - answered from the same data above; "
-                     f"enable a real Copilot backend (ASL_COPILOT_BACKEND=cli|sdk) for free-form Q&A.")
-    lines.append("\n_(mock analyzer - set ASL_COPILOT_BACKEND=cli or sdk to use GitHub Copilot.)_")
+                     f"enable a real Copilot backend "
+                     f"(FRAME_RELAY_COPILOT_BACKEND=cli|sdk) for free-form Q&A.")
+    lines.append(
+        "\n_(mock analyzer - set FRAME_RELAY_COPILOT_BACKEND=cli or sdk "
+        "to use GitHub Copilot.)_"
+    )
     return "\n".join(lines)
 
 

@@ -1,18 +1,18 @@
 {
   // Merge this into your tailnet policy in the Tailscale admin console.
   "tagOwners": {
-    "tag:apollo-hub": ["autogroup:admin"],
-    "tag:apollo-collector": ["autogroup:admin"],
+    "tag:frame-relay-hub": ["autogroup:admin"],
+    "tag:frame-relay-collector": ["autogroup:admin"],
   },
   "grants": [
     {
-      "src": ["tag:apollo-collector"],
-      "dst": ["tag:apollo-hub"],
+      "src": ["tag:frame-relay-collector"],
+      "dst": ["tag:frame-relay-hub"],
       "ip": ["tcp:443"],
     },
     {
       "src": ["autogroup:member"],
-      "dst": ["tag:apollo-hub"],
+      "dst": ["tag:frame-relay-hub"],
       "ip": ["tcp:443"],
     },
   ],

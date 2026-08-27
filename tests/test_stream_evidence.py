@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from asl_collector import clientmeta, hostmeta
+from frame_relay_collector import clientmeta, hostmeta
 from hub import config, db as hub_db
 from conftest import SAMPLES
 

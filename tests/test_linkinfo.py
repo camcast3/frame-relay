@@ -1,5 +1,5 @@
 """Unit tests for the link/AP detection parsers (against captured sample output)."""
-from asl_collector import linkinfo
+from frame_relay_collector import linkinfo
 from conftest import SAMPLES
 
 

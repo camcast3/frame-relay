@@ -1,7 +1,7 @@
 # Steam Game Mode / Big Picture launcher
 
 Use this when Moonlight or Artemis is already a non-Steam shortcut and you want every launch from
-Steam to create, capture, and stop an Apollo Streaming Lab session automatically.
+Steam to create, capture, and stop a Frame Relay session automatically.
 
 The wrapper supports:
 
@@ -29,20 +29,20 @@ file. Steam Launch Options remain a manual change.
 From the repository:
 
 ```bash
-chmod +x collectors/linux/install-steam-wrapper.sh
-collectors/linux/install-steam-wrapper.sh
+chmod +x collectors/linux/install-frame-relay-steam-wrapper.sh
+collectors/linux/install-frame-relay-steam-wrapper.sh
 ```
 
 Setup asks:
 
 1. whether the shortcut is **Moonlight** or **Artemis**
-2. the Apollo Streaming Lab hub URL
+2. the Frame Relay hub URL
 3. which shortcut to use if more than one entry matches
 
 For unattended setup:
 
 ```bash
-collectors/linux/install-steam-wrapper.sh \
+collectors/linux/install-frame-relay-steam-wrapper.sh \
   --client-role moonlight \
   --hub-url http://192.0.2.10:8080 \
   --shortcut Moonlight
@@ -53,7 +53,7 @@ by setup. Existing Flatpak/client arguments are retained in the printed replacem
 looks like:
 
 ```text
-"/home/USER/.local/bin/asl-steam-launch" -- %command%
+"/home/USER/.local/bin/frame-relay-steam-launch" -- %command%
 ```
 
 Restart Steam after setting Launch Options or installing artwork.
@@ -62,23 +62,23 @@ Default Linux locations:
 
 | Item | Path |
 |---|---|
-| Profile | `${XDG_CONFIG_HOME:-~/.config}/apollo-streaming-lab/steam-launch.json` |
-| Installed collector/artwork | `${XDG_DATA_HOME:-~/.local/share}/apollo-streaming-lab/` |
-| Launcher | `~/.local/bin/asl-steam-launch` |
-| Local log | `${XDG_STATE_HOME:-~/.local/state}/apollo-streaming-lab/steam-launch.log` |
+| Profile | `${XDG_CONFIG_HOME:-~/.config}/frame-relay/steam-launch.json` |
+| Installed collector/artwork | `${XDG_DATA_HOME:-~/.local/share}/frame-relay/` |
+| Launcher | `~/.local/bin/frame-relay-steam-launch` |
+| Local log | `${XDG_STATE_HOME:-~/.local/state}/frame-relay/steam-launch.log` |
 
 ## Windows setup
 
 From PowerShell in the repository:
 
 ```powershell
-.\collectors\windows\Install-AslSteamWrapper.ps1
+.\collectors\windows\Install-FrameRelaySteamWrapper.ps1
 ```
 
 The same setup questions are used. For unattended setup:
 
 ```powershell
-.\collectors\windows\Install-AslSteamWrapper.ps1 `
+.\collectors\windows\Install-FrameRelaySteamWrapper.ps1 `
   -ClientRole artemis `
   -HubUrl http://192.0.2.10:8080 `
   -Shortcut Artemis
@@ -88,7 +88,7 @@ Paste the printed line into the existing shortcut's **Properties → Launch Opti
 looks like the following; any existing client arguments are retained in the printed replacement:
 
 ```text
-"C:\Users\USER\AppData\Local\ApolloStreamingLab\bin\asl-steam-launch.cmd" -- %command%
+"C:\Users\USER\AppData\Local\FrameRelay\bin\frame-relay-steam-launch.cmd" -- %command%
 ```
 
 Restart Steam afterward.
@@ -97,9 +97,9 @@ Default Windows locations:
 
 | Item | Path |
 |---|---|
-| Profile and installed payload | `%LOCALAPPDATA%\ApolloStreamingLab\` |
-| Launcher | `%LOCALAPPDATA%\ApolloStreamingLab\bin\asl-steam-launch.cmd` |
-| Local log | `%LOCALAPPDATA%\ApolloStreamingLab\logs\steam-launch.log` |
+| Profile and installed payload | `%LOCALAPPDATA%\FrameRelay\` |
+| Launcher | `%LOCALAPPDATA%\FrameRelay\bin\frame-relay-steam-launch.cmd` |
+| Local log | `%LOCALAPPDATA%\FrameRelay\logs\steam-launch.log` |
 
 ## Test profile
 
@@ -134,7 +134,7 @@ Supported name fields are `{hostname}`, `{client_role}`, `{date}`, `{time}`, and
 Explicit profile values are treated as known controls and are not overwritten by log evidence.
 Omit values you do not know.
 
-Keep `ASL_SCREENSHOT_TOKEN` in the environment rather than adding it to this file.
+Keep `FRAME_RELAY_SCREENSHOT_TOKEN` in the environment rather than adding it to this file.
 
 ## Normal use
 
@@ -149,7 +149,7 @@ streaming unless you remove its Launch Options wrapper.
 
 ## Artwork
 
-Both client roles use the same original Apollo Streaming Lab streaming-client artwork:
+Both client roles use the same original Frame Relay streaming-client artwork:
 
 - portrait cover: `600x900`
 - hero/background: `1920x620`
@@ -158,7 +158,11 @@ Both client roles use the same original Apollo Streaming Lab streaming-client ar
 
 Setup finds the non-Steam shortcut's unsigned grid ID and copies the four images into that Steam
 user's `config/grid` directory. The assets are original, role-neutral, and marked CC0-1.0 in
-`assets/steam/streaming-client/PROVENANCE.txt`.
+`assets/steam/frame-relay/PROVENANCE.txt`.
+
+When upgrading from the former Apollo Streaming Lab wrapper, setup copies an existing profile from
+the legacy user directory into the new Frame Relay location. The old files are left in place for
+rollback; update Steam Launch Options to the newly printed `frame-relay-steam-launch` command.
 
 Use `--skip-artwork` on Linux or `-SkipArtwork` on Windows if you only want the wrapper.
 
@@ -167,11 +171,11 @@ Use `--skip-artwork` on Linux or `-SkipArtwork` on Windows if you only want the 
 Reconfigure an existing profile:
 
 ```bash
-collectors/linux/install-steam-wrapper.sh --reconfigure
+collectors/linux/install-frame-relay-steam-wrapper.sh --reconfigure
 ```
 
 ```powershell
-.\collectors\windows\Install-AslSteamWrapper.ps1 -Reconfigure
+.\collectors\windows\Install-FrameRelaySteamWrapper.ps1 -Reconfigure
 ```
 
 Without the reconfigure flag, upgrades preserve the existing profile.
@@ -186,7 +190,7 @@ To roll back:
 1. Remove the wrapper line from the shortcut's Launch Options.
 2. Remove the four custom artwork files through Steam or from the shortcut's `config/grid`
    directory using the grid ID printed during setup.
-3. Delete the user-local Apollo Streaming Lab installation paths listed above.
+3. Delete the user-local Frame Relay installation paths listed above.
 
 If launch fails in Game Mode/Big Picture, inspect the local log first. A failed wrapped-command
 start marks any newly created session stopped so it does not remain active on the hub.

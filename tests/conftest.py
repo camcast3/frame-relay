@@ -18,9 +18,9 @@ _TEST_DATA_DIR = _ROOT / ".testdata" / uuid.uuid4().hex
 _TEST_DATA_DIR.mkdir(parents=True, exist_ok=True)
 atexit.register(lambda: shutil.rmtree(_TEST_DATA_DIR, ignore_errors=True))
 
-os.environ["ASL_DATA_DIR"] = str(_TEST_DATA_DIR)
-os.environ["ASL_COPILOT_BACKEND"] = "mock"
-os.environ["ASL_SCREENSHOT_TOKEN"] = "test-screenshot-token"
+os.environ["FRAME_RELAY_DATA_DIR"] = str(_TEST_DATA_DIR)
+os.environ["FRAME_RELAY_COPILOT_BACKEND"] = "mock"
+os.environ["FRAME_RELAY_SCREENSHOT_TOKEN"] = "test-screenshot-token"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

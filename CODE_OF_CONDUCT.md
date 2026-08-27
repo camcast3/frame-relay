@@ -22,7 +22,7 @@ where someone is representing this project.
 Report abusive behavior confidentially through GitHub private reporting and prefix the report
 title with `Code of Conduct`:
 
-<https://github.com/camcast3/apollo-streaming-lab/security/advisories/new>
+<https://github.com/camcast3/frame-relay/security/advisories/new>
 
 Reports will be reviewed confidentially where possible. Maintainers may edit or remove content,
 lock conversations, reject contributions, or temporarily/permanently restrict participation.

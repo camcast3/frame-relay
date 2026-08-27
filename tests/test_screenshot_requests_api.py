@@ -26,7 +26,7 @@ def _create(client, **overrides):
 
 
 def _auth(token: str | None = None) -> dict[str, str]:
-    return {"X-ASL-Screenshot-Token": token or config.SCREENSHOT_TOKEN}
+    return {"X-Frame-Relay-Screenshot-Token": token or config.SCREENSHOT_TOKEN}
 
 
 def _request_artifacts(session_id: str) -> list[str]:

@@ -64,8 +64,8 @@ Set these in `.env` (see [deploy.md](./deploy.md)); the same names appear in
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `ASL_COPILOT_BACKEND` | `mock` | `mock` / `cli` / `sdk`. |
-| `ASL_COPILOT_TOKEN` | — | GitHub token with a Copilot entitlement (`cli`/`sdk`). Falls back to `GITHUB_TOKEN`. |
-| `ASL_COPILOT_MODEL` | `auto` | Model name. |
-| `ASL_COPILOT_CLI_PATH` | `copilot` | Path to the Copilot CLI binary for the `cli` backend. |
-| `ASL_COPILOT_LOG_TAIL_LINES` | `400` | Trailing log lines per source included in the prompt. |
+| `FRAME_RELAY_COPILOT_BACKEND` | `mock` | `mock` / `cli` / `sdk`. |
+| `FRAME_RELAY_COPILOT_TOKEN` | — | GitHub token with a Copilot entitlement (`cli`/`sdk`). Falls back to `GITHUB_TOKEN`. |
+| `FRAME_RELAY_COPILOT_MODEL` | `auto` | Model name. |
+| `FRAME_RELAY_COPILOT_CLI_PATH` | `copilot` | Path to the Copilot CLI binary for the `cli` backend. |
+| `FRAME_RELAY_COPILOT_LOG_TAIL_LINES` | `400` | Trailing log lines per source included in the prompt. |

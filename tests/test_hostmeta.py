@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Unit tests for deriving metadata from Apollo host logs."""
 
-from asl_collector import hostmeta
+from frame_relay_collector import hostmeta
 from conftest import SAMPLES
 
 

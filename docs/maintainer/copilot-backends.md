@@ -30,7 +30,7 @@ The key invariant is **context parity**: switching backends must not change what
 - `link_samples`
 - host-only `display_samples`
 - derived `display_validation`
-- host/client log tails, capped by `ASL_COPILOT_LOG_TAIL_LINES`
+- host/client log tails, capped by `FRAME_RELAY_COPILOT_LOG_TAIL_LINES`
 - related sessions summarized for comparison
 
 If you change this structure, update:
@@ -63,10 +63,10 @@ Resolved in [../../hub/config.py](../../hub/config.py):
 
 | Variable | Purpose |
 |---|---|
-| `ASL_COPILOT_BACKEND` | `mock`, `cli`, or `sdk` |
-| `ASL_COPILOT_TOKEN` | Copilot-entitled token; falls back to `GITHUB_TOKEN` |
-| `ASL_COPILOT_MODEL` | model name; `auto` means backend default |
-| `ASL_COPILOT_CLI_PATH` | CLI binary path for the `cli` backend |
-| `ASL_COPILOT_LOG_TAIL_LINES` | trailing log lines per source included in context |
+| `FRAME_RELAY_COPILOT_BACKEND` | `mock`, `cli`, or `sdk` |
+| `FRAME_RELAY_COPILOT_TOKEN` | Copilot-entitled token; falls back to `GITHUB_TOKEN` |
+| `FRAME_RELAY_COPILOT_MODEL` | model name; `auto` means backend default |
+| `FRAME_RELAY_COPILOT_CLI_PATH` | CLI binary path for the `cli` backend |
+| `FRAME_RELAY_COPILOT_LOG_TAIL_LINES` | trailing log lines per source included in context |
 
-Tests force `ASL_COPILOT_BACKEND=mock`; keep that path first-class.
+Tests force `FRAME_RELAY_COPILOT_BACKEND=mock`; keep that path first-class.

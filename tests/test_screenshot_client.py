@@ -4,7 +4,7 @@ import binascii
 import json
 import zlib
 
-from asl_collector import client
+from frame_relay_collector import client
 
 
 class _DummyResponse:
@@ -69,7 +69,7 @@ def test_pending_screenshot_requests_sends_source_query_and_auth(monkeypatch):
 
     assert pending == [{"id": 1}]
     assert seen["url"] == "http://hub/api/sessions/session-1/screenshot-requests/pending?source=host"
-    assert seen["headers"]["x-asl-screenshot-token"] == "secret-token"
+    assert seen["headers"]["x-frame-relay-screenshot-token"] == "secret-token"
     assert seen["timeout"] == 30
 
 
@@ -87,7 +87,7 @@ def test_screenshot_token_whitespace_is_normalized(monkeypatch):
         "host",
         token=" token with spaces ",
     )
-    assert seen["headers"]["x-asl-screenshot-token"] == "token with spaces"
+    assert seen["headers"]["x-frame-relay-screenshot-token"] == "token with spaces"
 
 
 def test_complete_screenshot_request_uses_stdlib_multipart_and_auth(tmp_path, monkeypatch):
@@ -119,7 +119,7 @@ def test_complete_screenshot_request_uses_stdlib_multipart_and_auth(tmp_path, mo
     body = seen["body"]
     assert result == {"status": "completed"}
     assert seen["url"] == "http://hub/api/sessions/session-2/screenshot-requests/99/complete"
-    assert seen["headers"]["x-asl-screenshot-token"] == "secret-token"
+    assert seen["headers"]["x-frame-relay-screenshot-token"] == "secret-token"
     assert seen["headers"]["content-type"].startswith("multipart/form-data; boundary=")
     assert seen["timeout"] == 30
     assert b'name="source"' in body

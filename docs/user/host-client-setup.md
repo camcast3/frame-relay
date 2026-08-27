@@ -34,13 +34,13 @@ Pick the deployment that matches how your devices connect:
   Hub is at `http://<hub-host>:8080`. Local devices hit that IP directly; remote devices can reach
   the same IP over WireGuard when routing and firewall rules allow it.
 - **Tailnet-only (optional):** `docker compose up -d --build` (Tailscale sidecar, `tailscale
-  serve`); reachable only at `https://apollo-streaming-lab.<tailnet>.ts.net`. Use this if you'd
+  serve`); reachable only at `https://frame-relay.<tailnet>.ts.net`. Use this if you'd
   rather not expose a LAN port. See [deploy.md](./deploy.md).
 
-Set `ASL_COPILOT_BACKEND` / `ASL_COPILOT_TOKEN` in `.env` if you want real Copilot analysis.
+Set `FRAME_RELAY_COPILOT_BACKEND` / `FRAME_RELAY_COPILOT_TOKEN` in `.env` if you want real Copilot analysis.
 
 If you want on-demand host/client screenshots from the active session page, also set the same
-`ASL_SCREENSHOT_TOKEN` on the hub, the Apollo host, and every collector-capable client before
+`FRAME_RELAY_SCREENSHOT_TOKEN` on the hub, the Apollo host, and every collector-capable client before
 starting their collectors. The operator flow is in [first-multi-client-test.md](./first-multi-client-test.md).
 
 Below, `HUB` = the URL from this step. Documentation examples use
@@ -58,20 +58,20 @@ soon as the host posts to it, so restarting the watcher never double-captures.
 
 **Host — Apollo (Windows), start once and leave it:**
 ```powershell
-collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source host -Watch
+collectors\windows\Start-FrameRelaySession.ps1 -HubUrl HUB -Source host -Watch
 ```
 
 **Client — dictates the session** by creating it when you start a test:
 ```powershell
 # Windows Artemis: the collector wraps the app - it finds Artemis for -Role, launches it, and
 # captures its stderr live. Capture ends when you close Artemis.
-collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source client -Role artemis -Create `
+collectors\windows\Start-FrameRelaySession.ps1 -HubUrl HUB -Source client -Role artemis -Create `
     -Name "couch LAN AV1" -ComparisonLabel "game-local-hdr" -ApolloApp Playnite `
     -GameTitle "Test game" -LaunchClient
 ```
 ```bash
 # Linux Moonlight (finds the Flatpak export or /usr/bin/moonlight)
-collectors/linux/asl-session.sh --hub-url HUB --source client --role moonlight --create \
+collectors/linux/frame-relay-session.sh --hub-url HUB --source client --role moonlight --create \
     --name "couch LAN AV1" --comparison-label "game-local-hdr" --apollo-app Playnite \
     --game-title "Test game" --launch-client --interval 15
 ```
@@ -103,13 +103,13 @@ newest). The **log location is auto-detected from `-Source`/`-Role`** too.
 
 **Host — Apollo (Windows):**
 ```powershell
-collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Create -Name "couch LAN HEVC" -Source host
+collectors\windows\Start-FrameRelaySession.ps1 -HubUrl HUB -Create -Name "couch LAN HEVC" -Source host
 # prints the new session id (for reference only — clients attach automatically)
 ```
 
 **Client — Linux Moonlight (couch box):**
 ```bash
-collectors/linux/asl-session.sh --hub-url HUB --source client --role moonlight --attach-latest \
+collectors/linux/frame-relay-session.sh --hub-url HUB --source client --role moonlight --attach-latest \
     --interval 15
 # Moonlight-Qt log auto-detected under ~/.var/app/... or ~/.config/...; add --log if yours differs
 ```
@@ -117,16 +117,16 @@ collectors/linux/asl-session.sh --hub-url HUB --source client --role moonlight -
 **Client — Windows Moonlight/Artemis:**
 ```powershell
 # Artemis: newest %TEMP%\Artemis-*.log is found automatically
-collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source client -Role artemis -AttachLatest
+collectors\windows\Start-FrameRelaySession.ps1 -HubUrl HUB -Source client -Role artemis -AttachLatest
 # For LIVE client logs, let the collector wrap the app (its %TEMP% log is buffered; stderr is
 # real-time). -LaunchClient finds the app for -Role; capture runs until you close it:
-collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source client -Role artemis -AttachLatest `
+collectors\windows\Start-FrameRelaySession.ps1 -HubUrl HUB -Source client -Role artemis -AttachLatest `
     -LaunchClient
 # Non-standard install? Point at the executable instead:
-collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source client -Role artemis -AttachLatest `
+collectors\windows\Start-FrameRelaySession.ps1 -HubUrl HUB -Source client -Role artemis -AttachLatest `
     -Launch "D:\Games\Artemis\Artemis.exe"
 # Moonlight-Qt on Windows has no fixed log path — wrap it the same way, or pass -LogPath:
-collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source client -Role moonlight -AttachLatest `
+collectors\windows\Start-FrameRelaySession.ps1 -HubUrl HUB -Source client -Role moonlight -AttachLatest `
     -LaunchClient
 ```
 
@@ -160,7 +160,7 @@ Same as local, with three differences:
 3. Tell the host collector which client CIDR belongs to WireGuard so those connections are
    classified **`remote-WireGuard`**:
    ```powershell
-   collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source host -Watch `
+   collectors\windows\Start-FrameRelaySession.ps1 -HubUrl HUB -Source host -Watch `
        -WgSubnet <wireguard-client-cidr>
    ```
 

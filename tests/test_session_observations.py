@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 
-from asl_collector import __version__, client, session
+from frame_relay_collector import __version__, client, session
 from conftest import SAMPLES
 
 

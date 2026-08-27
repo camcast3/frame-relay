@@ -1,4 +1,4 @@
-"""Network-path presets for Apollo streaming tests."""
+"""Network-path presets for Frame Relay streaming tests."""
 
 from __future__ import annotations
 

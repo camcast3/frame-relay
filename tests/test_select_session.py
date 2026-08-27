@@ -1,7 +1,7 @@
 """Interactive awaiting-client session picker in the collector."""
 import builtins
 
-from asl_collector import client, session
+from frame_relay_collector import client, session
 
 
 def test_select_session_picks_by_number(monkeypatch):

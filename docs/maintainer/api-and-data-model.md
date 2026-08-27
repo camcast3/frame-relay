@@ -61,7 +61,7 @@ Maintenance consequences:
 | Link samples | `/api/sessions/{id}/links` | `LinkSampleBatch` / `LinkSampleIn` | `link_samples` | Ordered by `sampled_at`, then `id`; feeds roam/RSSI UI and Copilot signals. |
 | Display samples | `/api/sessions/{id}/displays` | `DisplaySampleBatch` / `DisplaySampleIn` | `display_samples` | Host-only contract (`source="host"`); used by `display_validation`. |
 | Net tests | `/api/sessions/{id}/nettests` | `NetTestIn` | `net_tests` | Usually `iperf3`; raw output is stored for debugging. |
-| Manual artifacts | `/api/sessions/{id}/artifacts` | multipart (`file`, `kind`, `caption`) | `artifacts` + artifact file on disk | Router writes the file under `ASL_ARTIFACTS_DIR`, then stores the DB row. |
+| Manual artifacts | `/api/sessions/{id}/artifacts` | multipart (`file`, `kind`, `caption`) | `artifacts` + artifact file on disk | Router writes the file under `FRAME_RELAY_ARTIFACTS_DIR`, then stores the DB row. |
 | Screenshot requests | `/api/sessions/{id}/screenshot-requests`, `/pending`, `/{request_id}/complete`, `/{request_id}/fail` | `ScreenshotRequestIn`, `ScreenshotRequestFailIn`, multipart completion form | `screenshot_requests` and optionally `artifacts` | Request rows move `pending` → `completed`/`failed`; completion is source-bound and creates a `requested_{source}_screenshot` artifact. |
 | Analysis/chat | `/api/sessions/{id}/analyze`, `/api/sessions/{id}/chat` | `ChatIn` for chat POST | `sessions.diagnosis`, `chat_messages` | Copilot works from the stored bundle, not ad-hoc request state. |
 
@@ -70,5 +70,5 @@ Maintenance consequences:
 - Use `db.db()` for one connection per call; it enables foreign keys and commits on exit.
 - Keep raw SQL in `service.py`/`db.py`; do not spread SQL into routers, templates, or JS.
 - Preserve stable ordering for child evidence (`sampled_at`/`id` or `id ASC`) so pages, tests, and Copilot see deterministic bundles.
-- Treat filesystem writes and DB rows as one logical feature. Artifact-related changes must consider both the stored row and the file under `ASL_ARTIFACTS_DIR`.
+- Treat filesystem writes and DB rows as one logical feature. Artifact-related changes must consider both the stored row and the file under `FRAME_RELAY_ARTIFACTS_DIR`.
 - Prefer additive migrations and backward-compatible defaults; the app initializes existing databases in place.

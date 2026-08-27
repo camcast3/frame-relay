@@ -1,5 +1,5 @@
 """Role-driven log-location discovery in the collector."""
-from asl_collector import logfind
+from frame_relay_collector import logfind
 
 
 def test_apollo_host_windows_candidates():

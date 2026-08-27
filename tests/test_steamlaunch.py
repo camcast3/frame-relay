@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from asl_collector import client as collector_client
-from asl_collector import session, steamlaunch
+from frame_relay_collector import client as collector_client
+from frame_relay_collector import session, steamlaunch
 
 
 def test_default_config_path_linux_uses_xdg():
@@ -17,13 +17,13 @@ def test_default_config_path_linux_uses_xdg():
         env={"XDG_CONFIG_HOME": "/tmp/config"},
         home="/home/tester",
     )
-    assert path.as_posix() == "/tmp/config/apollo-streaming-lab/steam-launch.json"
+    assert path.as_posix() == "/tmp/config/frame-relay/steam-launch.json"
 
 
 def test_default_config_path_linux_falls_back_to_home():
     path = steamlaunch.default_config_path(system="Linux", env={}, home="/home/tester")
     assert path.as_posix() == (
-        "/home/tester/.config/apollo-streaming-lab/steam-launch.json"
+        "/home/tester/.config/frame-relay/steam-launch.json"
     )
 
 
@@ -33,7 +33,7 @@ def test_default_config_path_windows_uses_localappdata():
         env={"LOCALAPPDATA": "/users/tester/local"},
         home="/users/tester",
     )
-    assert path == Path("/users/tester/local/ApolloStreamingLab/steam-launch.json")
+    assert path == Path("/users/tester/local/FrameRelay/steam-launch.json")
 
 
 def test_parse_profile_accepts_complete_profile():

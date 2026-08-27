@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Unit tests for deriving metadata from Moonlight/Artemis client logs."""
 
-from asl_collector import clientmeta
+from frame_relay_collector import clientmeta
 from conftest import SAMPLES
 
 

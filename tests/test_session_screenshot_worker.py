@@ -4,7 +4,7 @@ import argparse
 import binascii
 import zlib
 
-from asl_collector import client, session
+from frame_relay_collector import client, session
 
 
 def _png_bytes(width: int, height: int) -> bytes:
@@ -81,12 +81,21 @@ class _LoopEvent:
 
 
 def test_build_parser_uses_env_screenshot_token_default(monkeypatch):
-    monkeypatch.setenv("ASL_SCREENSHOT_TOKEN", "env-screenshot-token")
+    monkeypatch.setenv("FRAME_RELAY_SCREENSHOT_TOKEN", "env-screenshot-token")
 
     args = session.build_parser().parse_args(["--hub-url", "http://hub"])
 
     assert args.screenshot_token == "env-screenshot-token"
     assert args.screenshot_poll_interval == 3
+
+
+def test_explicit_empty_new_screenshot_token_disables_legacy(monkeypatch):
+    monkeypatch.setenv("FRAME_RELAY_SCREENSHOT_TOKEN", "")
+    monkeypatch.setenv("ASL_SCREENSHOT_TOKEN", "legacy-token")
+
+    args = session.build_parser().parse_args(["--hub-url", "http://hub"])
+
+    assert args.screenshot_token == ""
 
 
 def test_start_screenshot_worker_skips_when_token_missing():

@@ -2,12 +2,12 @@ FROM python:3.11.15-slim-bookworm@sha256:d29f48a31a8b408ed19272ca1e7b10ebae13b24
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    ASL_DATA_DIR=/data
+    FRAME_RELAY_DEFAULT_DATA_DIR=/data
 
 WORKDIR /app
 
-RUN groupadd --system asl \
-    && useradd --system --gid asl --home-dir /app --shell /usr/sbin/nologin asl
+RUN groupadd --system frame-relay \
+    && useradd --system --gid frame-relay --home-dir /app --shell /usr/sbin/nologin frame-relay
 
 COPY requirements.txt .
 # The final container never installs packages at runtime. Remove installers/build helpers and
@@ -18,12 +18,13 @@ RUN pip install --no-cache-dir --require-hashes -r requirements.txt \
     && dpkg --purge --force-remove-essential perl-base
 
 COPY hub/ ./hub/
+COPY frame_relay/ ./frame_relay/
 
 RUN mkdir -p /data \
-    && chown -R asl:asl /app /data
+    && chown -R frame-relay:frame-relay /app /data
 
-USER asl
+USER frame-relay
 
 EXPOSE 8080
 
-CMD ["uvicorn", "hub.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["python", "-m", "frame_relay"]

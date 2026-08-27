@@ -35,7 +35,7 @@ Both are Qt apps that write a **per-run** diagnostic log into `%TEMP%`:
     **through the collector** so it captures the process's **stderr** in real time (Qt writes the
     same log to stderr and flushes each line):
     ```powershell
-    collectors\windows\Start-AslSession.ps1 -HubUrl HUB -Source client -Role artemis -AttachLatest `
+    collectors\windows\Start-FrameRelaySession.ps1 -HubUrl HUB -Source client -Role artemis -AttachLatest `
         -Launch "$env:ProgramFiles\Artemis Game Streaming\Artemis.exe"
     ```
     The capture then runs until you close Artemis (or Ctrl+C). Common install path:
@@ -52,7 +52,7 @@ Both are Qt apps that write a **per-run** diagnostic log into `%TEMP%`:
 - **Flatpak:** `~/.var/app/com.moonlight_stream.Moonlight/` (and `flatpak run … 2> moonlight.log`).
 - **Native:** `~/.config/Moonlight Game Streaming Project/`.
 - With `-Role moonlight` the collector auto-detects `*.log` under those dirs; pass the file(s)
-  with `--log` to `asl-session.sh` to override or if your install differs.
+  with `--log` to `frame-relay-session.sh` to override or if your install differs.
 
 ## Artemis client (Android) — agent-less
 - In-app **Export/Share logs**, or `adb logcat -d -s Moonlight:* Artemis:* > artemis-log.txt`.

@@ -40,7 +40,7 @@ Use this checklist immediately before changing repository visibility.
 .\.venv\Scripts\python.exe tools\check_public_repo.py
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe tools\lock_requirements.py --check
-docker build -t apollo-streaming-lab:public-check .
+docker build -t frame-relay:public-check .
 ```
 
 After the visibility change, verify the public landing page, issue forms, security policy,

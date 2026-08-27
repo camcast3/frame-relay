@@ -99,7 +99,7 @@ def stop_session(hub: str, sid: str) -> None:
 
 def _screenshot_headers(token: str | None) -> dict[str, str]:
     token = (token or "").strip()
-    return {"X-ASL-Screenshot-Token": token} if token else {}
+    return {"X-Frame-Relay-Screenshot-Token": token} if token else {}
 
 
 def _encode_multipart(
@@ -110,7 +110,7 @@ def _encode_multipart(
     content: bytes,
     content_type: str,
 ) -> tuple[bytes, str]:
-    boundary = f"----aslcollector{uuid.uuid4().hex}"
+    boundary = f"----framerelaycollector{uuid.uuid4().hex}"
     parts: list[bytes] = []
     for name, value in fields.items():
         if value is None:

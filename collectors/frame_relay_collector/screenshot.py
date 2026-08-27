@@ -39,7 +39,7 @@ def _captured_at() -> str:
 
 
 def _temp_png_path() -> str:
-    fd, path = tempfile.mkstemp(prefix="asl_screenshot_", suffix=".png")
+    fd, path = tempfile.mkstemp(prefix="frame_relay_screenshot_", suffix=".png")
     os.close(fd)
     try:
         os.unlink(path)
@@ -123,7 +123,8 @@ def _capture_windows(preferred_display_name: str | None = None) -> CaptureResult
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
-$preferred = $env:ASL_SCREENSHOT_DISPLAY
+$preferred = $env:FRAME_RELAY_SCREENSHOT_DISPLAY
+if (-not $preferred) {{ $preferred = $env:ASL_SCREENSHOT_DISPLAY }}
 $screen = $null
 if ($preferred) {{
     $screen = [System.Windows.Forms.Screen]::AllScreens |
@@ -155,9 +156,9 @@ finally {{
     try:
         env = dict(os.environ)
         if preferred_display_name:
-            env["ASL_SCREENSHOT_DISPLAY"] = preferred_display_name
+            env["FRAME_RELAY_SCREENSHOT_DISPLAY"] = preferred_display_name
         else:
-            env.pop("ASL_SCREENSHOT_DISPLAY", None)
+            env.pop("FRAME_RELAY_SCREENSHOT_DISPLAY", None)
         proc = _run_capture(
             [
                 powershell,

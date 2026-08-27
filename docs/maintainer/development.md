@@ -15,11 +15,11 @@ Python 3.11 is the project baseline. Use Windows-style commands/examples unless 
 # dev server, localhost only unless you add --host 0.0.0.0
 .\.venv\Scripts\python.exe -m uvicorn hub.main:app --reload --port 8080
 
-# normal direct run, bound from ASL_HOST/ASL_PORT (defaults 0.0.0.0:8080)
-.\.venv\Scripts\python.exe -m hub
+# normal direct run, bound from FRAME_RELAY_HOST/FRAME_RELAY_PORT (defaults 0.0.0.0:8080)
+.\.venv\Scripts\python.exe -m frame_relay
 ```
 
-Important caveat: bare `uvicorn hub.main:app` binds `127.0.0.1` by default. Use `python -m hub` or pass `--host 0.0.0.0` when you need other devices to reach the hub.
+Important caveat: bare `uvicorn hub.main:app` binds `127.0.0.1` by default. Use `python -m frame_relay` or pass `--host 0.0.0.0` when you need other devices to reach the hub.
 
 ## Tests and validation
 
@@ -39,14 +39,14 @@ Typical targeted choices:
 
 ## Import-time config caveat
 
-[../../hub/config.py](../../hub/config.py) reads environment variables at import time. Tests must set `ASL_*` first.
+[../../hub/config.py](../../hub/config.py) reads environment variables at import time. Tests must set `FRAME_RELAY_*` first.
 
 [../../tests/conftest.py](../../tests/conftest.py) does exactly that before importing `hub`:
 
 - prepends `collectors/` to `sys.path`
-- sets `ASL_DATA_DIR`
-- forces `ASL_COPILOT_BACKEND=mock`
-- sets `ASL_SCREENSHOT_TOKEN`
+- sets `FRAME_RELAY_DATA_DIR`
+- forces `FRAME_RELAY_COPILOT_BACKEND=mock`
+- sets `FRAME_RELAY_SCREENSHOT_TOKEN`
 
 If you need different config inside a test, either:
 

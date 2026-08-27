@@ -1,4 +1,4 @@
-# Apollo Streaming Lab documentation
+# Frame Relay documentation
 
 Choose the docs that match why you're here.
 

@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping improve Apollo Streaming Lab.
+Thanks for helping improve Frame Relay.
 
 ## Before starting
 
@@ -26,7 +26,7 @@ smoke checks, and import-time configuration details.
 
 - Preserve the router → `service.py` → `db.py` layering.
 - Treat `hub/models.py` as the shared API contract.
-- Keep `collectors/asl_collector/` standard-library only.
+- Keep `collectors/frame_relay_collector/` standard-library only.
 - Keep parser logic testable from sanitized captured samples.
 - Use only the fixed network-path values documented by the project.
 - Never weaken screenshot-token checks or expose additional artifact surfaces silently.
