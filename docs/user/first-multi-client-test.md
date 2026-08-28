@@ -55,8 +55,8 @@ duration. Record the procedure in the session notes.
 On the machine that will store the results:
 
 ```powershell
-git clone https://github.com/camcast3/apollo-streaming-lab.git
-cd apollo-streaming-lab
+git clone https://github.com/camcast3/frame-relay.git
+cd frame-relay
 docker compose -f docker-compose.lan.yaml up -d --build
 curl.exe http://127.0.0.1:8080/health
 ```
@@ -84,9 +84,9 @@ TCP 8080 in the hub machine's firewall.
 On the Windows Apollo host:
 
 ```powershell
-git clone https://github.com/camcast3/apollo-streaming-lab.git
-cd apollo-streaming-lab
-.\collectors\windows\Start-AslSession.ps1 `
+git clone https://github.com/camcast3/frame-relay.git
+cd frame-relay
+.\collectors\windows\Start-FrameRelaySession.ps1 `
   -HubUrl http://192.0.2.10:8080 `
   -Source host `
   -Watch
@@ -114,8 +114,8 @@ ImageMagick `import`. The rest of the Linux collector works without those tools.
 On each Windows client:
 
 ```powershell
-git clone https://github.com/camcast3/apollo-streaming-lab.git
-cd apollo-streaming-lab
+git clone https://github.com/camcast3/frame-relay.git
+cd frame-relay
 git pull
 ```
 
@@ -127,7 +127,7 @@ If this client is normally launched from Steam Game Mode or Big Picture, install
 whether the shortcut is Moonlight or Artemis and uses the same artwork for both.
 
 If you want authenticated host/client screenshots from the active session page, generate one shared
-`ASL_SCREENSHOT_TOKEN` and set it on the hub, the Apollo host, and every collector-capable client
+`FRAME_RELAY_SCREENSHOT_TOKEN` and set it on the hub, the Apollo host, and every collector-capable client
 before starting their collectors. Use the same value everywhere; mismatches are rejected. The
 hub-side setting lives in `.env` (see [Deploying the hub](./deploy.md)).
 
@@ -136,7 +136,7 @@ hub-side setting lives in `.env` (see [Deploying the hub](./deploy.md)).
 For normal capture, let Apollo and Moonlight report the stream details. The recommended command is:
 
 ```powershell
-.\collectors\windows\Start-AslSession.ps1 `
+.\collectors\windows\Start-FrameRelaySession.ps1 `
   -HubUrl http://192.0.2.10:8080 `
   -Source client `
   -Role moonlight `
@@ -205,7 +205,7 @@ the final upload and marks the session stopped.
 If the MiniPC runs Linux, use the equivalent command:
 
 ```bash
-collectors/linux/asl-session.sh \
+collectors/linux/frame-relay-session.sh \
   --hub-url http://192.0.2.10:8080 \
   --source client --role moonlight --create \
   --name "Example Game - Linux mini PC" \
@@ -251,7 +251,7 @@ display evidence for the Xbox run.
 
 Do this before you stop a collector-capable run.
 
-1. Set the same `ASL_SCREENSHOT_TOKEN` on the hub, the Apollo host, and the collector-capable
+1. Set the same `FRAME_RELAY_SCREENSHOT_TOKEN` on the hub, the Apollo host, and the collector-capable
    client before their collectors start.
 2. While the stream is live and the repeatable scene is visible, open that active session page.
 3. In **Host/client screenshot comparison**, enter the shared token. This authenticates the

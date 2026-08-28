@@ -6,7 +6,7 @@ import zlib
 
 import pytest
 
-from asl_collector import screenshot
+from frame_relay_collector import screenshot
 
 
 def _png_bytes(width: int, height: int) -> bytes:
@@ -66,7 +66,7 @@ def test_capture_windows_uses_powershell_and_returns_png_metadata(tmp_path, monk
     assert "PrimaryScreen" in seen["cmd"][-1]
     assert "AllScreens" in seen["cmd"][-1]
     assert "CopyFromScreen" in seen["cmd"][-1]
-    assert seen["env"]["ASL_SCREENSHOT_DISPLAY"] == r"\\.\DISPLAY2"
+    assert seen["env"]["FRAME_RELAY_SCREENSHOT_DISPLAY"] == r"\\.\DISPLAY2"
     assert captured["path"] == str(out_path)
     assert captured["display_name"] == r"\\.\DISPLAY1"
     assert captured["width"] == 2560

@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
   [datetime]$Cutoff = [datetime]::UtcNow.AddDays(-7),
-  [string]$HubImage = 'apollo-streaming-lab:dependency-audit',
+  [string]$HubImage = 'frame-relay:dependency-audit',
   [string]$TailscaleImage
 )
 

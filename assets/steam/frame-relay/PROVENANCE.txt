@@ -7,4 +7,4 @@ were copied or incorporated.
 
 SPDX-License-Identifier: CC0-1.0
 The artwork is dedicated to the public domain under CC0 1.0.
-Editable source: streaming-client-master.svg
+Editable source: frame-relay-master.svg

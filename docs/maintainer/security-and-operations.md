@@ -14,8 +14,8 @@ If the network is not trusted, put the hub behind a stronger perimeter than the 
 
 Screenshot requests are the exception: [../../hub/routers/screenshot_requests.py](../../hub/routers/screenshot_requests.py) is gated by a shared bearer secret.
 
-- `ASL_SCREENSHOT_TOKEN` blank → feature disabled (`503`)
-- every screenshot-request route requires `X-ASL-Screenshot-Token`
+- `FRAME_RELAY_SCREENSHOT_TOKEN` blank → feature disabled (`503`)
+- every screenshot-request route requires `X-Frame-Relay-Screenshot-Token`
 - the same token must be configured on the hub and on any screenshot-capable collector/helper
 - completion is source-bound (`host` vs `client`) and only allowed from `pending`
 - requested screenshots must be PNGs
@@ -24,7 +24,7 @@ This is a deployment-wide shared secret, not user identity. Keep it on trusted d
 
 ## Artifacts are visible and persisted separately from request auth
 
-Artifacts live under `ASL_ARTIFACTS_DIR` and are served directly from `/artifacts`.
+Artifacts live under `FRAME_RELAY_ARTIFACTS_DIR` and are served directly from `/artifacts`.
 
 Important consequences:
 
@@ -36,12 +36,12 @@ Session deletion cascades the database rows, but the current code path does **no
 
 ## Secrets and local state
 
-- `.env` is for secrets such as `ASL_COPILOT_TOKEN`, `ASL_SCREENSHOT_TOKEN`, and deployment-specific settings.
+- `.env` is for secrets such as `FRAME_RELAY_COPILOT_TOKEN`, `FRAME_RELAY_SCREENSHOT_TOKEN`, and deployment-specific settings.
 - `data/` holds SQLite plus artifact files.
 - Both are gitignored and must never be committed.
 - Direct runs default to `./data`; Docker uses the mounted volume behind `/data`.
 
-`ASL_COPILOT_TOKEN` falls back to `GITHUB_TOKEN`; treat both as secrets.
+`FRAME_RELAY_COPILOT_TOKEN` falls back to `GITHUB_TOKEN`; treat both as secrets.
 
 ## Screenshot/privacy/HDR limitations
 
@@ -59,7 +59,7 @@ That limitation is deliberate and should stay visible in docs and UI wording.
 
 - Run Windows host collectors in the logged-in interactive session; do not treat SYSTEM/non-interactive service capture as supported for display validation or desktop screenshots.
 - Host `--watch` mode is safe to leave running and safe to restart because it keys off missing host log chunks rather than local state.
-- `python -m hub` runs in the foreground and has no built-in restart manager. Use Docker or an OS service wrapper if you want always-on behavior.
+- `python -m frame_relay` runs in the foreground and has no built-in restart manager. Use Docker or an OS service wrapper if you want always-on behavior.
 
 ## Firewall and deployment concerns
 

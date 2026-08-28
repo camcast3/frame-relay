@@ -1,7 +1,6 @@
-"""Run the hub with `python -m hub`.
+"""Deprecated-compatible hub entry point; prefer `python -m frame_relay`.
 
-Binds to ASL_HOST/ASL_PORT from config (default 0.0.0.0:8080) so the hub is reachable from
-other devices, unlike a bare `uvicorn hub.main:app` which defaults to 127.0.0.1 only.
+Binds to FRAME_RELAY_HOST/FRAME_RELAY_PORT (or legacy ASL_HOST/ASL_PORT) from config.
 """
 from __future__ import annotations
 

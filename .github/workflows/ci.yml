@@ -64,4 +64,4 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Build runtime image
-        run: docker build --tag apollo-streaming-lab:ci .
+        run: docker build --tag frame-relay:ci .

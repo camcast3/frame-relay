@@ -1,7 +1,7 @@
 """Unit tests for log slicing (byte-offset capture + wall-clock slice + tail fallback)."""
 from datetime import datetime, timezone
 
-from asl_collector import logslice
+from frame_relay_collector import logslice
 from conftest import SAMPLES
 
 

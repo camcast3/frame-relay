@@ -1,3 +1,5 @@
+name: frame-relay
+
 services:
   tailscale:
     # No official Tailscale image available on 2026-08-13 both satisfies the seven-day
@@ -5,7 +7,7 @@ services:
     # at an intentionally unpullable digest. Enabling it requires a reviewed source-control
     # change to an official version@digest; deployment environment variables cannot bypass it.
     image: tailscale/tailscale:security-review-required@sha256:0000000000000000000000000000000000000000000000000000000000000000
-    hostname: apollo-streaming-lab
+    hostname: frame-relay
     restart: unless-stopped
     cap_add:
       - NET_ADMIN
@@ -28,11 +30,11 @@ services:
       - tailscale
     restart: unless-stopped
     environment:
-      ASL_DATA_DIR: /data
-      ASL_COPILOT_BACKEND: ${ASL_COPILOT_BACKEND:-mock}
-      ASL_COPILOT_TOKEN: ${ASL_COPILOT_TOKEN:-}
-      ASL_COPILOT_MODEL: ${ASL_COPILOT_MODEL:-auto}
-      ASL_SCREENSHOT_TOKEN: ${ASL_SCREENSHOT_TOKEN:-}
+      FRAME_RELAY_DATA_DIR: /data
+      FRAME_RELAY_COPILOT_BACKEND: ${FRAME_RELAY_COPILOT_BACKEND-${ASL_COPILOT_BACKEND:-mock}}
+      FRAME_RELAY_COPILOT_TOKEN: ${FRAME_RELAY_COPILOT_TOKEN-${ASL_COPILOT_TOKEN:-}}
+      FRAME_RELAY_COPILOT_MODEL: ${FRAME_RELAY_COPILOT_MODEL-${ASL_COPILOT_MODEL:-auto}}
+      FRAME_RELAY_SCREENSHOT_TOKEN: ${FRAME_RELAY_SCREENSHOT_TOKEN-${ASL_SCREENSHOT_TOKEN:-}}
     volumes:
       - hub-data:/data
 

@@ -1,7 +1,8 @@
-/* Apollo Streaming Lab - front-end glue. Vanilla JS, no build step. */
-const ASL = (() => {
+/* Frame Relay - front-end glue. Vanilla JS, no build step. */
+const FrameRelay = (() => {
   const sid = () => document.getElementById("session")?.dataset.id;
-  const SCREENSHOT_TOKEN_KEY = "asl.screenshotToken";
+  const SCREENSHOT_TOKEN_KEY = "frameRelay.screenshotToken";
+  const LEGACY_SCREENSHOT_TOKEN_KEY = "asl.screenshotToken";
   const SCREENSHOT_BUTTON_IDS = [
     "screenshot-request-both",
     "screenshot-request-host",
@@ -139,7 +140,13 @@ const ASL = (() => {
   function restoreScreenshotToken() {
     const input = document.getElementById("screenshot-token");
     if (!input) return;
-    try { input.value = sessionStorage.getItem(SCREENSHOT_TOKEN_KEY) || ""; } catch (e) { /* ignore */ }
+    try {
+      input.value = sessionStorage.getItem(SCREENSHOT_TOKEN_KEY)
+        || sessionStorage.getItem(LEGACY_SCREENSHOT_TOKEN_KEY)
+        || "";
+      if (input.value) sessionStorage.setItem(SCREENSHOT_TOKEN_KEY, input.value);
+      sessionStorage.removeItem(LEGACY_SCREENSHOT_TOKEN_KEY);
+    } catch (e) { /* ignore */ }
   }
 
   function artifactUrl(filename) {
@@ -266,7 +273,7 @@ const ASL = (() => {
         `/api/sessions/${sid()}/screenshot-requests`,
         { targets },
         false,
-        { "X-ASL-Screenshot-Token": token },
+        { "X-Frame-Relay-Screenshot-Token": token },
       );
       mergeScreenshotRequests(created || []);
       setScreenshotRequestMessage(
@@ -330,14 +337,19 @@ const ASL = (() => {
       if (pre && wrap) pre.classList.toggle("nowrap", !wrap.checked);
     }
     try {
-      if (wrap) localStorage.setItem("asl.wrap", wrap.checked ? "1" : "0");
-      if (stack) localStorage.setItem("asl.stack", stack.checked ? "1" : "0");
+      if (wrap) localStorage.setItem("frameRelay.wrap", wrap.checked ? "1" : "0");
+      if (stack) localStorage.setItem("frameRelay.stack", stack.checked ? "1" : "0");
     } catch (e) { /* private mode: preference just won't persist */ }
   }
 
   function restoreLogView() {
     try {
-      const w = localStorage.getItem("asl.wrap"), s = localStorage.getItem("asl.stack");
+      const w = localStorage.getItem("frameRelay.wrap") ?? localStorage.getItem("asl.wrap");
+      const s = localStorage.getItem("frameRelay.stack") ?? localStorage.getItem("asl.stack");
+      if (w !== null) localStorage.setItem("frameRelay.wrap", w);
+      if (s !== null) localStorage.setItem("frameRelay.stack", s);
+      localStorage.removeItem("asl.wrap");
+      localStorage.removeItem("asl.stack");
       const wrap = document.getElementById("wrap"), stack = document.getElementById("stack");
       if (wrap && w !== null) wrap.checked = w === "1";
       if (stack && s !== null) stack.checked = s === "1";
@@ -777,3 +789,6 @@ const ASL = (() => {
   return { wireNewSessionForm, initIndexPage, initSessionPage, saveOutcome, saveNotes, stopSession,
            deleteSession, analyze, applyLogFilter, applyLogView };
 })();
+
+// Deprecated compatibility alias for cached pages and third-party snippets.
+const ASL = FrameRelay;

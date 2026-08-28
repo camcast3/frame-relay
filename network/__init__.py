@@ -1,1 +1,1 @@
-"""Network test and scenario helpers for Apollo Streaming Lab."""
+"""Network test and scenario helpers for Frame Relay."""

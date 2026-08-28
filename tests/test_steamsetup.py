@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from asl_collector import steamsetup
+from frame_relay_collector import steamsetup
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -54,11 +54,11 @@ def test_install_paths_linux_uses_xdg(tmp_path):
     )
 
     assert paths.config_path == (
-        tmp_path / "config" / "apollo-streaming-lab" / "steam-launch.json"
+        tmp_path / "config" / "frame-relay" / "steam-launch.json"
     )
-    assert paths.data_root == tmp_path / "data" / "apollo-streaming-lab"
-    assert paths.state_root == tmp_path / "state" / "apollo-streaming-lab"
-    assert paths.launcher_path == tmp_path / "bin" / "asl-steam-launch"
+    assert paths.data_root == tmp_path / "data" / "frame-relay"
+    assert paths.state_root == tmp_path / "state" / "frame-relay"
+    assert paths.launcher_path == tmp_path / "bin" / "frame-relay-steam-launch"
 
 
 def test_install_paths_windows_uses_localappdata(tmp_path):
@@ -68,9 +68,43 @@ def test_install_paths_windows_uses_localappdata(tmp_path):
         home=str(tmp_path / "home"),
     )
 
-    assert paths.data_root == tmp_path / "Local" / "ApolloStreamingLab"
+    assert paths.data_root == tmp_path / "Local" / "FrameRelay"
     assert paths.config_path == paths.data_root / "steam-launch.json"
-    assert paths.launcher_path == paths.data_root / "bin" / "asl-steam-launch.cmd"
+    assert paths.launcher_path == paths.data_root / "bin" / "frame-relay-steam-launch.cmd"
+
+
+@pytest.mark.parametrize(
+    ("system", "legacy_relative"),
+    [
+        ("Linux", Path("config") / "apollo-streaming-lab" / "steam-launch.json"),
+        ("Windows", Path("Local") / "ApolloStreamingLab" / "steam-launch.json"),
+    ],
+)
+def test_migrate_legacy_profile(tmp_path, system, legacy_relative):
+    env = (
+        {"LOCALAPPDATA": str(tmp_path / "Local")}
+        if system == "Windows"
+        else {"XDG_CONFIG_HOME": str(tmp_path / "config")}
+    )
+    paths = steamsetup.install_paths(
+        system=system,
+        env=env,
+        home=str(tmp_path / "home"),
+    )
+    legacy = tmp_path / legacy_relative
+    legacy.parent.mkdir(parents=True)
+    legacy.write_text(
+        json.dumps({"hub_url": "http://hub", "client_role": "moonlight"}),
+        encoding="utf-8",
+    )
+
+    assert steamsetup.migrate_legacy_profile(
+        paths, system=system, env=env, home=str(tmp_path / "home")
+    ) is True
+    assert json.loads(paths.config_path.read_text(encoding="utf-8"))[
+        "client_role"
+    ] == "moonlight"
+    assert legacy.is_file()
 
 
 def test_choose_client_role_prompts_for_moonlight_or_artemis():
@@ -264,7 +298,8 @@ def test_run_installs_payload_profile_and_launcher_without_artwork(tmp_path, sys
     )
 
     assert paths.launcher_path.is_file()
-    assert (paths.lib_root / "asl_collector" / "steamlaunch.py").is_file()
+    assert steamsetup.legacy_launcher_path(paths).is_file()
+    assert (paths.lib_root / "frame_relay_collector" / "steamlaunch.py").is_file()
     assert (paths.artwork_root / "portrait-grid.png").is_file()
     stored = json.loads(paths.config_path.read_text(encoding="utf-8"))
     assert stored["client_role"] == "moonlight"
@@ -316,7 +351,7 @@ def test_launch_options_preserve_flatpak_arguments(tmp_path):
         data_root=tmp_path,
         config_path=tmp_path / "config.json",
         state_root=tmp_path / "state",
-        launcher_path=tmp_path / "bin" / "asl-steam-launch",
+        launcher_path=tmp_path / "bin" / "frame-relay-steam-launch",
     )
     shortcut = steamsetup.SteamShortcut(
         1,
@@ -338,7 +373,7 @@ def test_launch_options_preserve_existing_command_wrapper(tmp_path):
         data_root=tmp_path,
         config_path=tmp_path / "config.json",
         state_root=tmp_path / "state",
-        launcher_path=tmp_path / "asl-steam-launch.cmd",
+        launcher_path=tmp_path / "frame-relay-steam-launch.cmd",
     )
     shortcut = steamsetup.SteamShortcut(
         1,
@@ -359,7 +394,7 @@ def test_launch_options_keep_linux_environment_assignments_outside_wrapper(tmp_p
         data_root=tmp_path,
         config_path=tmp_path / "config.json",
         state_root=tmp_path / "state",
-        launcher_path=tmp_path / "asl-steam-launch",
+        launcher_path=tmp_path / "frame-relay-steam-launch",
     )
     shortcut = steamsetup.SteamShortcut(
         1,

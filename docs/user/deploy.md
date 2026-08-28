@@ -7,8 +7,8 @@ running hub, see [host-client-setup.md](./host-client-setup.md).
 | Option | Command | Reachable at | When to use |
 |--------|---------|--------------|-------------|
 | **LAN / WireGuard** (recommended) | `docker compose -f docker-compose.lan.yaml up -d --build` | `http://<hub-host>:8080` | Devices are on your LAN or reach it over an operator-managed **WireGuard** tunnel. |
-| **Tailnet-only** | Requires a maintainer-reviewed tracked image update, then `docker compose up -d --build` | `https://apollo-streaming-lab.<tailnet>.ts.net` | Only when an aged, scan-clean Tailscale image is available. |
-| **Direct on the host** (no Docker) | `python -m hub` | `http://<host-ip>:8080` | Run it on the Windows/Linux machine you already use — no Docker. Bind to all interfaces + open the firewall to reach it from other devices. |
+| **Tailnet-only** | Requires a maintainer-reviewed tracked image update, then `docker compose up -d --build` | `https://frame-relay.<tailnet>.ts.net` | Only when an aged, scan-clean Tailscale image is available. |
+| **Direct on the host** (no Docker) | `python -m frame_relay` | `http://<host-ip>:8080` | Run it on the Windows/Linux machine you already use — no Docker. Bind to all interfaces + open the firewall to reach it from other devices. |
 
 The Docker options read Copilot settings from `.env` (copy `.env.example` first) and persist data
 in the `hub-data` volume (`/data` in the container → the SQLite DB + uploaded artifacts).
@@ -52,12 +52,13 @@ docker scout cves --only-severity critical,high --exit-code `
 2. Have a maintainer replace the intentionally invalid image in `docker-compose.yaml` with an
    official version+digest that is at least seven days old and passes the scan above, then commit
    that reviewable change.
-3. Set `TS_AUTHKEY` from the Tailscale admin console; prefer an auth key tagged `tag:apollo-hub`.
-4. Optionally set `ASL_COPILOT_TOKEN` and `ASL_COPILOT_BACKEND=cli` or `sdk`
+3. Set `TS_AUTHKEY` from the Tailscale admin console; prefer an auth key tagged
+   `tag:frame-relay-hub`.
+4. Optionally set `FRAME_RELAY_COPILOT_TOKEN` and `FRAME_RELAY_COPILOT_BACKEND=cli` or `sdk`
    (see [copilot-analysis.md](./copilot-analysis.md)).
 5. Apply [`../../deploy/tailscale-acl.snippet.hujson`](../../deploy/tailscale-acl.snippet.hujson) in the
-   Tailscale admin console (defines `tag:apollo-hub` / `tag:apollo-collector` and who may reach
-   the hub on `tcp:443`).
+   Tailscale admin console (defines `tag:frame-relay-hub` / `tag:frame-relay-collector` and who
+   may reach the hub on `tcp:443`).
 6. Start on the Docker host:
 
    ```powershell
@@ -65,7 +66,7 @@ docker scout cves --only-severity critical,high --exit-code `
    docker compose ps
    ```
 
-7. Open `https://apollo-streaming-lab.<tailnet>.ts.net` from a tailnet device.
+7. Open `https://frame-relay.<tailnet>.ts.net` from a tailnet device.
 8. Confirm the hub is **not** reachable at `http://<LAN-IP>:8080` — this compose file publishes
    no LAN ports.
 
@@ -77,13 +78,13 @@ The proxy mapping (`:443` → `127.0.0.1:8080`, funnel disabled) lives in
 ## Option C — Run directly on the host (no Docker)
 
 Handy when you want the hub on the machine you already use (e.g. the Apollo host) without Docker.
-`python -m hub` binds `ASL_HOST`/`ASL_PORT` (**`0.0.0.0:8080`** by default), so it listens on all
+`python -m frame_relay` binds `FRAME_RELAY_HOST`/`FRAME_RELAY_PORT` (**`0.0.0.0:8080`** by default), so it listens on all
 interfaces and is reachable from other devices right away:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --require-hashes -r requirements.txt
-.\.venv\Scripts\python.exe -m hub          # serves http://<host-ip>:8080 on all interfaces
+.\.venv\Scripts\python.exe -m frame_relay  # serves http://<host-ip>:8080 on all interfaces
 ```
 
 A **bare `uvicorn hub.main:app` binds `127.0.0.1` only** (localhost) — that's why it isn't
@@ -97,7 +98,7 @@ Then, on the host:
 
 1. **Open the port in the firewall.** On Windows (run PowerShell as admin) allow inbound TCP 8080:
    ```powershell
-   New-NetFirewallRule -DisplayName "Apollo Streaming Lab hub" -Direction Inbound `
+   New-NetFirewallRule -DisplayName "Frame Relay hub" -Direction Inbound `
        -Action Allow -Protocol TCP -LocalPort 8080 -Profile Any `
        -RemoteAddress 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10
    ```
@@ -116,7 +117,7 @@ A failed test after the private-range firewall rule usually means the router blo
 traffic or the Wi-Fi SSID has guest/client isolation enabled. Allow the client VLAN to reach the
 hub IP on TCP 8080; do not expose 8080 to the public internet.
 
-Data goes to `./data` next to the repo (override with `ASL_DATA_DIR`). This runs in the
+Data goes to `./data` next to the repo (override with `FRAME_RELAY_DATA_DIR`). This runs in the
 foreground with no auto-restart — for always-on use prefer a Docker option above (or wrap it in a
 service, e.g. NSSM on Windows or a systemd unit on Linux). The hub has no built-in auth, so anyone
 who can reach `:8080` can use it — keep it on a trusted LAN or gate access with your firewall /
@@ -132,17 +133,17 @@ All runtime settings come from environment variables. The same names are listed 
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `TS_AUTHKEY` | — | Tailscale auth key (Option B only). |
-| `ASL_COPILOT_BACKEND` | `mock` | `mock` / `cli` / `sdk` — see [copilot-analysis.md](./copilot-analysis.md). |
-| `ASL_COPILOT_TOKEN` | — | GitHub token with a Copilot entitlement (`cli`/`sdk`). Falls back to `GITHUB_TOKEN`. |
-| `ASL_COPILOT_MODEL` | `auto` | Copilot model name. |
-| `ASL_SCREENSHOT_TOKEN` | — | Shared secret required to queue and fulfill on-demand host/client screenshot requests. Leave blank to disable the feature. |
-| `ASL_DATA_DIR` | `/data` (Docker) · `./data` (direct) | Where the SQLite DB + artifacts live. |
-| `ASL_HOST` / `ASL_PORT` | `0.0.0.0` / `8080` | Bind address/port for `python -m hub` (and inside the container). |
+| `FRAME_RELAY_COPILOT_BACKEND` | `mock` | `mock` / `cli` / `sdk` — see [copilot-analysis.md](./copilot-analysis.md). |
+| `FRAME_RELAY_COPILOT_TOKEN` | — | GitHub token with a Copilot entitlement (`cli`/`sdk`). Falls back to `GITHUB_TOKEN`. |
+| `FRAME_RELAY_COPILOT_MODEL` | `auto` | Copilot model name. |
+| `FRAME_RELAY_SCREENSHOT_TOKEN` | — | Shared secret required to queue and fulfill on-demand host/client screenshot requests. Leave blank to disable the feature. |
+| `FRAME_RELAY_DATA_DIR` | `/data` (Docker) · `./data` (direct) | Where the SQLite DB + artifacts live. |
+| `FRAME_RELAY_HOST` / `FRAME_RELAY_PORT` | `0.0.0.0` / `8080` | Bind address/port for `python -m frame_relay` (and inside the container). |
 
 Data lives under `data/` and secrets in `.env` — both are gitignored; never commit either.
 
 Generate a screenshot token, store it in the hub's `.env`, and set the identical
-`ASL_SCREENSHOT_TOKEN` environment variable on every collector-capable host/client:
+`FRAME_RELAY_SCREENSHOT_TOKEN` environment variable on every collector-capable host/client:
 
 ```powershell
 $token = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))

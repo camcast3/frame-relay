@@ -2,9 +2,9 @@
 
 ## Non-negotiable collector rule
 
-Everything under [../../collectors/asl_collector](../../collectors/asl_collector) must remain **standard-library only**. The collector is expected to run from an unprepared system Python.
+Everything under [../../collectors/frame_relay_collector](../../collectors/frame_relay_collector) must remain **standard-library only**. The collector is expected to run from an unprepared system Python.
 
-- Use `urllib` for hub traffic (see [../../collectors/asl_collector/client.py](../../collectors/asl_collector/client.py)).
+- Use `urllib` for hub traffic (see [../../collectors/frame_relay_collector/client.py](../../collectors/frame_relay_collector/client.py)).
 - Do not add `requests`, `httpx`, or any other third-party dependency there.
 - PowerShell/Bash wrappers under `collectors/windows/` and `collectors/linux/` should stay thin launchers around the Python package.
 
@@ -12,14 +12,14 @@ Everything under [../../collectors/asl_collector](../../collectors/asl_collector
 
 Keep filesystem/app discovery separate from parsing:
 
-- [../../collectors/asl_collector/logfind.py](../../collectors/asl_collector/logfind.py) — candidate log paths
-- [../../collectors/asl_collector/appfind.py](../../collectors/asl_collector/appfind.py) — candidate client executables
+- [../../collectors/frame_relay_collector/logfind.py](../../collectors/frame_relay_collector/logfind.py) — candidate log paths
+- [../../collectors/frame_relay_collector/appfind.py](../../collectors/frame_relay_collector/appfind.py) — candidate client executables
 
 Keep subprocess/OS interaction separate from pure parsing:
 
 - `hostmeta.py`, `clientmeta.py` — stream/HDR metadata from logs
 - `linkinfo.py`, `conninfo.py`, `hostmeta.py` — parse command/log text, with probing outside the pure parser when possible
-- display topology in [../../collectors/asl_collector/displayprobe.py](../../collectors/asl_collector/displayprobe.py)
+- display topology in [../../collectors/frame_relay_collector/displayprobe.py](../../collectors/frame_relay_collector/displayprobe.py)
 - network parsing under [../../network](../../network)
 
 When adding support for a new OS command or log shape:
@@ -32,7 +32,7 @@ When adding support for a new OS command or log shape:
 
 ## Capture workflows
 
-[../../collectors/asl_collector/session.py](../../collectors/asl_collector/session.py) supports four important patterns:
+[../../collectors/frame_relay_collector/session.py](../../collectors/frame_relay_collector/session.py) supports four important patterns:
 
 - **Host watch mode** (`--watch`) — long-lived, idempotent, follows sessions created elsewhere, and back-fills logs from session start when it notices a session late.
 - **Client creates session** (`--create`) — recommended matched-client workflow; the host watcher follows.
@@ -52,10 +52,10 @@ Operator workflows live in [../user/host-client-setup.md](../user/host-client-se
 
 ## Steam setup boundary
 
-[../../collectors/asl_collector/steamsetup.py](../../collectors/asl_collector/steamsetup.py)
+[../../collectors/frame_relay_collector/steamsetup.py](../../collectors/frame_relay_collector/steamsetup.py)
 contains the shared Windows/Linux setup logic. Native shell/PowerShell/CMD files remain thin:
 
-- profiles use XDG directories on Linux and `%LOCALAPPDATA%\ApolloStreamingLab` on Windows
+- profiles use XDG directories on Linux and `%LOCALAPPDATA%\FrameRelay` on Windows
 - `client_role` is required and limited to `moonlight` or `artemis`
 - setup may parse `shortcuts.vdf` read-only to find a non-Steam shortcut's unsigned grid ID
 - setup installs custom grid files but never rewrites Steam shortcut records
@@ -64,7 +64,7 @@ contains the shared Windows/Linux setup logic. Native shell/PowerShell/CMD files
 - a client launch failure stops a session created by that invocation, but never an attached one
 
 Original artwork and provenance live under
-[../../assets/steam/streaming-client](../../assets/steam/streaming-client). Preserve the four
+[../../assets/steam/frame-relay](../../assets/steam/frame-relay). Preserve the four
 Steam dimensions/names and verify redistribution terms for any replacement assets.
 
 ## Display evidence and console-session requirements

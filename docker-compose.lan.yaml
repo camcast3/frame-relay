@@ -1,10 +1,12 @@
-# LAN / WireGuard-reachable hub (no Tailscale).
+# LAN / WireGuard-reachable Frame Relay hub (no Tailscale).
 #
 # Local devices reach the hub at http://<hub-host>:8080; remote devices may reach the same
 # address over an operator-managed WireGuard tunnel.
 # Control who can reach it with your own firewall rules.
 #
 # Deploy:  docker compose -f docker-compose.lan.yaml up -d --build
+name: frame-relay
+
 services:
   hub:
     build: .
@@ -12,11 +14,11 @@ services:
     ports:
       - "8080:8080"
     environment:
-      ASL_DATA_DIR: /data
-      ASL_COPILOT_BACKEND: ${ASL_COPILOT_BACKEND:-mock}
-      ASL_COPILOT_TOKEN: ${ASL_COPILOT_TOKEN:-}
-      ASL_COPILOT_MODEL: ${ASL_COPILOT_MODEL:-auto}
-      ASL_SCREENSHOT_TOKEN: ${ASL_SCREENSHOT_TOKEN:-}
+      FRAME_RELAY_DATA_DIR: /data
+      FRAME_RELAY_COPILOT_BACKEND: ${FRAME_RELAY_COPILOT_BACKEND-${ASL_COPILOT_BACKEND:-mock}}
+      FRAME_RELAY_COPILOT_TOKEN: ${FRAME_RELAY_COPILOT_TOKEN-${ASL_COPILOT_TOKEN:-}}
+      FRAME_RELAY_COPILOT_MODEL: ${FRAME_RELAY_COPILOT_MODEL-${ASL_COPILOT_MODEL:-auto}}
+      FRAME_RELAY_SCREENSHOT_TOKEN: ${FRAME_RELAY_SCREENSHOT_TOKEN-${ASL_SCREENSHOT_TOKEN:-}}
     volumes:
       - hub-data:/data
 

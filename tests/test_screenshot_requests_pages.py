@@ -68,7 +68,7 @@ def _create(client, **overrides):
 
 
 def _auth() -> dict[str, str]:
-    return {"X-ASL-Screenshot-Token": config.SCREENSHOT_TOKEN}
+    return {"X-Frame-Relay-Screenshot-Token": config.SCREENSHOT_TOKEN}
 
 
 def _complete_request(client, sid: str, request_id: int, source: str, machine: str, captured_at: str, display_name: str):

@@ -3,17 +3,17 @@
 Typical use on a machine under test (run with the system Python; stdlib only):
 
     # Apollo host
-    python -m asl_collector --hub-url https://apollo-streaming-lab.<tailnet>.ts.net \
+    python -m frame_relay_collector --hub-url https://frame-relay.<tailnet>.ts.net \
         --session-id 20260723T101951-ab12 --source host --role apollo \
         --log "C:\\Program Files\\Apollo\\config\\sunshine.log" --interval 15
 
     # Moonlight client (Linux); attach to the session the host just created (no id copy-paste)
-    python3 -m asl_collector --hub-url https://apollo-streaming-lab.<tailnet>.ts.net \
+    python3 -m frame_relay_collector --hub-url https://frame-relay.<tailnet>.ts.net \
         --attach-latest --source client --role moonlight \
         --log ~/.config/Moonlight*/Moonlight.log --interval 15 --duration 0
 
     # Artemis client (Windows); LIVE logs by launching the app and capturing its stderr
-    python -m asl_collector --hub-url http://192.0.2.10:8080 --attach-latest \
+    python -m frame_relay_collector --hub-url http://192.0.2.10:8080 --attach-latest \
         --source client --role artemis \
         --launch "C:\\Program Files\\Artemis Game Streaming\\Artemis.exe"
 """
@@ -768,8 +768,10 @@ def _capture(hub: str, sid: str, args: argparse.Namespace, machine: str, role: s
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="asl_collector", description="Apollo Streaming Lab collector")
-    p.add_argument("--hub-url", required=True, help="e.g. https://apollo-streaming-lab.<tailnet>.ts.net")
+    p = argparse.ArgumentParser(
+        prog="frame-relay-collector", description="Frame Relay collector"
+    )
+    p.add_argument("--hub-url", required=True, help="e.g. https://frame-relay.<tailnet>.ts.net")
     p.add_argument("--session-id", help="existing session id; omit to attach to a session the "
                                          "host created (auto-picks when only one is awaiting a "
                                          "client, else prompts), or use --create for a new one")
@@ -801,10 +803,14 @@ def build_parser() -> argparse.ArgumentParser:
                         "the UI updates live (0=only post once when the capture stops)")
     p.add_argument(
         "--screenshot-token",
-        default=os.getenv("ASL_SCREENSHOT_TOKEN", ""),
+        default=(
+            os.environ["FRAME_RELAY_SCREENSHOT_TOKEN"]
+            if "FRAME_RELAY_SCREENSHOT_TOKEN" in os.environ
+            else os.getenv("ASL_SCREENSHOT_TOKEN", "")
+        ),
         dest="screenshot_token",
         help="shared secret for screenshot request polling/upload "
-             "(default: ASL_SCREENSHOT_TOKEN env var)",
+             "(default: FRAME_RELAY_SCREENSHOT_TOKEN; ASL_SCREENSHOT_TOKEN is deprecated)",
     )
     p.add_argument(
         "--screenshot-poll-interval",

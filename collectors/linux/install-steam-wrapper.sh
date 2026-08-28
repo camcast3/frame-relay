@@ -1,11 +1,5 @@
 #!/usr/bin/env bash
-# Install/update the user-local Steam wrapper. Prompts for Moonlight or Artemis when omitted.
+# Deprecated compatibility wrapper. Use install-frame-relay-steam-wrapper.sh.
 set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COLLECTORS_DIR="$(dirname "$SCRIPT_DIR")"
-PY="$(command -v python3 || command -v python || true)"
-[ -n "$PY" ] || { echo "Python 3 is required for Apollo Streaming Lab." >&2; exit 1; }
-
-export PYTHONPATH="$COLLECTORS_DIR${PYTHONPATH:+:$PYTHONPATH}"
-exec "$PY" -m asl_collector.steamsetup "$@"
+exec "$SCRIPT_DIR/install-frame-relay-steam-wrapper.sh" "$@"

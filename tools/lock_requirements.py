@@ -255,7 +255,7 @@ def parse_direct_projects(input_file: Path) -> list[str]:
 @lru_cache(maxsize=None)
 def fetch_release_metadata(project_name: str, version: str) -> dict[str, object]:
     url = f"https://pypi.org/pypi/{project_name}/{version}/json"
-    request = Request(url, headers={"User-Agent": "apollo-streaming-lab-locker/1"})
+    request = Request(url, headers={"User-Agent": "frame-relay-locker/1"})
     try:
         with urlopen(request) as response:
             return json.load(response)
@@ -486,7 +486,7 @@ def main() -> None:
     ensure_tooling()
 
     if args.check:
-        with tempfile.TemporaryDirectory(prefix="asl-lock-check-") as temp_dir:
+        with tempfile.TemporaryDirectory(prefix="frame-relay-lock-check-") as temp_dir:
             runtime_generated = Path(temp_dir) / "requirements.txt"
             dev_generated = Path(temp_dir) / "requirements-dev.txt"
             compile_lock(

@@ -5,7 +5,7 @@
 | Area | Key files | Responsibility |
 |---|---|---|
 | `hub/` | [../../hub/main.py](../../hub/main.py), [../../hub/routers/](../../hub/routers), [../../hub/service.py](../../hub/service.py), [../../hub/db.py](../../hub/db.py), [../../hub/models.py](../../hub/models.py) | FastAPI JSON API, server-rendered Jinja UI, SQLite storage, artifact serving, Copilot analysis, screenshot-request auth/state. |
-| `collectors/asl_collector/` | [../../collectors/asl_collector/session.py](../../collectors/asl_collector/session.py) and helpers | Machine-local capture agent: logs, link samples, Windows display topology, session orchestration, metadata enrichment. |
+| `collectors/frame_relay_collector/` | [../../collectors/frame_relay_collector/session.py](../../collectors/frame_relay_collector/session.py) and helpers | Machine-local capture agent: logs, link samples, Windows display topology, session orchestration, metadata enrichment. |
 | `network/` | [../../network](../../network) | `iperf3` runner/parser plus per-network-path scenario presets. |
 
 The normal data flow is:
@@ -52,7 +52,7 @@ Neither module should bypass `service.py` or add ad-hoc persistence.
 ## Runtime and deployment boundaries
 
 - The **hub** is the only persistent server process. It may use third-party dependencies and runs either:
-  - directly with `python -m hub`,
+  - directly with `python -m frame_relay`,
   - in Docker with `docker compose -f docker-compose.lan.yaml up -d --build` (LAN/WireGuard, published `:8080`),
   - or in Docker with `docker compose up -d --build` (tailnet-only via Tailscale sidecar).
 - **Collectors** run on the machines under test. They are intentionally stdlib-only and talk to the hub over HTTP; they do not share a database or filesystem with the hub.

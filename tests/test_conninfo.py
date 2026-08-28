@@ -1,5 +1,5 @@
 """Unit tests for client-IP / network-path inference from live connections."""
-from asl_collector import conninfo
+from frame_relay_collector import conninfo
 
 WIN_NETSTAT = """
 Active Connections
@@ -58,6 +58,6 @@ def test_parse_conns_no_apollo_ports():
 
 
 def test_default_wg_subnets_require_explicit_configuration():
-    from asl_collector.session import DEFAULT_WG_SUBNETS
+    from frame_relay_collector.session import DEFAULT_WG_SUBNETS
     assert DEFAULT_WG_SUBNETS == []
     assert conninfo.classify_network_path("10.44.0.7", DEFAULT_WG_SUBNETS) == "local-LAN"

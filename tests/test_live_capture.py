@@ -2,7 +2,7 @@
 import io
 import threading
 
-from asl_collector import conninfo, session
+from frame_relay_collector import conninfo, session
 
 
 def test_reader_drains_stream_into_buffer():

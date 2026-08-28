@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Apollo Streaming Lab{% endblock %}</title>
-  <link rel="stylesheet" href="/static/app.css">
+  <title>{% block title %}Frame Relay{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css?v=frame-relay-0.1.0">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="/">▶ Apollo Streaming Lab</a>
+    <a class="brand" href="/">▶ Frame Relay</a>
     <nav>
       <a href="/">Sessions</a>
       <a class="btn" href="/sessions/new">+ New session</a>
@@ -17,7 +17,7 @@
   <main>
     {% block content %}{% endblock %}
   </main>
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=frame-relay-0.1.0"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

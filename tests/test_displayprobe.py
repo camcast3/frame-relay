@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from asl_collector import displayprobe
+from frame_relay_collector import displayprobe
 
 
 def _luid(high: int, low: int) -> displayprobe.LUID:

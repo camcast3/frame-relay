@@ -67,9 +67,12 @@ def _as_not_found_or_conflict(exc: Exception) -> HTTPException:
 
 
 def _auth_dependency(
+    x_frame_relay_screenshot_token: str | None = Header(
+        default=None, alias="X-Frame-Relay-Screenshot-Token"
+    ),
     x_asl_screenshot_token: str | None = Header(default=None, alias="X-ASL-Screenshot-Token"),
 ) -> None:
-    _require_screenshot_auth(x_asl_screenshot_token)
+    _require_screenshot_auth(x_frame_relay_screenshot_token or x_asl_screenshot_token)
 
 
 def _cleanup_file_best_effort(path: Path) -> None:

@@ -1,13 +1,13 @@
-# Apollo Streaming Lab
+# Frame Relay
 
-[![CI](https://github.com/camcast3/apollo-streaming-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/camcast3/apollo-streaming-lab/actions/workflows/ci.yml)
+[![CI](https://github.com/camcast3/frame-relay/actions/workflows/ci.yml/badge.svg)](https://github.com/camcast3/frame-relay/actions/workflows/ci.yml)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 
 A self-hosted troubleshooting and test harness for **Apollo/Sunshine** game streams and
 **Moonlight/Artemis** clients.
 
-Apollo Streaming Lab records host/client evidence in one session so you can compare hardware,
+Frame Relay records host/client evidence in one session so you can compare hardware,
 network paths, codecs, display modes, HDR behavior, and client performance without manually
 aligning separate logs.
 
@@ -38,15 +38,15 @@ aligning separate logs.
 | Client collector | Captures Moonlight/Artemis output and client link state on Windows/Linux |
 | Agent-less workflow | Manual Android/Xbox log, link, overlay, and screenshot evidence |
 
-Collectors under `collectors/asl_collector/` use only the Python standard library.
+Collectors under `collectors/frame_relay_collector/` use only the Python standard library.
 
 ## Quick start
 
 Python 3.11 and Docker are the supported baseline.
 
 ```powershell
-git clone https://github.com/camcast3/apollo-streaming-lab.git
-cd apollo-streaming-lab
+git clone https://github.com/camcast3/frame-relay.git
+cd frame-relay
 Copy-Item .env.example .env
 docker compose -f docker-compose.lan.yaml up -d --build
 ```
@@ -54,7 +54,7 @@ docker compose -f docker-compose.lan.yaml up -d --build
 Open `http://<hub-host>:8080` from a trusted device. Start the Windows Apollo host watcher:
 
 ```powershell
-.\collectors\windows\Start-AslSession.ps1 `
+.\collectors\windows\Start-FrameRelaySession.ps1 `
   -HubUrl http://<hub-host>:8080 `
   -Source host `
   -Watch
@@ -62,6 +62,10 @@ Open `http://<hub-host>:8080` from a trusted device. Start the Windows Apollo ho
 
 Then follow the **[First multi-client test](./docs/user/first-multi-client-test.md)**. It covers
 client capture, matched comparisons, screenshots, Xbox/manual evidence, and safe cleanup.
+
+Upgrading from the former Apollo Streaming Lab name? Follow
+**[Migrating to Frame Relay](./docs/user/migrating-to-frame-relay.md)** before recreating Docker
+containers or scheduled collectors.
 
 ## Documentation
 
@@ -76,6 +80,8 @@ client capture, matched comparisons, screenshots, Xbox/manual evidence, and safe
 - **[Deployment](./docs/user/deploy.md)** — LAN/WireGuard, tailnet-only, and direct-host options.
 - **[Agent-less capture](./docs/user/agentless-capture.md)** — Android and Xbox evidence entry.
 - **[Troubleshooting](./docs/user/troubleshooting.md)** — symptoms, evidence, and likely causes.
+- **[Migrating to Frame Relay](./docs/user/migrating-to-frame-relay.md)** — compatibility aliases,
+  environment variables, Docker data, collectors, Steam, and Tailscale tags.
 
 ### Develop and maintain
 

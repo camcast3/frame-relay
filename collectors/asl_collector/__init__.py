@@ -1,7 +1,29 @@
-"""Shared collector library for Apollo Streaming Lab.
+"""Deprecated compatibility package for :mod:`frame_relay_collector`."""
+from __future__ import annotations
 
-Runs on the Apollo host and on Moonlight/Artemis client machines. Standard-library
-only so it can be dropped onto any box without a virtualenv.
-"""
+import importlib
+import sys
 
-__version__ = "0.1.0"
+from frame_relay_collector import __version__
+
+_SUBMODULES = (
+    "appfind",
+    "client",
+    "clientmeta",
+    "conninfo",
+    "displayprobe",
+    "hostmeta",
+    "linkinfo",
+    "logfind",
+    "logslice",
+    "netmon",
+    "screenshot",
+    "session",
+)
+
+for _name in _SUBMODULES:
+    _module = importlib.import_module(f"frame_relay_collector.{_name}")
+    globals()[_name] = _module
+    sys.modules[f"{__name__}.{_name}"] = _module
+
+__all__ = ["__version__", *_SUBMODULES, "steamlaunch", "steamsetup"]

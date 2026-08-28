@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import copy
 
-from asl_collector import client, session
+from frame_relay_collector import client, session
 
 
 def _args(**kw):
